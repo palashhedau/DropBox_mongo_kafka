@@ -17,7 +17,8 @@ var mongo = require("../middleware/mongo");
 const MongoStore = require('connect-mongo')(session);
 var ObjectID = require('mongodb').ObjectID
 
-
+//Kafka
+var kafka = require('../middleware/kafka/client');
 
 
 module.exports = function(app , db , connection  ){
@@ -124,89 +125,59 @@ module.exports = function(app , db , connection  ){
 		 var email = req.body.email ;
 		 var groupname = req.body.groupname ;
 		 
-		 console.log('Palash');
+		 var apiObject = {"api" : "createGroup" ,
+						 "email":email,
+						 "groupname":groupname}
 		 
-		 var collection = db.collection('groups');
-		 collection.find({groupowner : email , groupname : groupname }).toArray(function(err , result){
-			 if(result[0]){
-				 console.log('Group exist ')
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			
+			 if(result.grouplist != null ){
+				 res.status(result.code).json( { grouplist : result.grouplist } ) ;
 			 }else{
-				
-				var obj = {
-						 groupowner : email ,
-						 group_name : groupname ,
-						 members : 
-							 [ {"email"  : email , "group_owner" : email } ],
-				} ; 
-				 
-				 collection.insertOne(obj , function(err , response){
-					 if(err){
-						 console.log(err) ;
-					 }else{
-						// Fetching the groups for the users 
-						 var collection = db.collection('groups');
-						 collection.find({members : {$elemMatch : { email : email } }}).toArray(function(err , response){
-							 if(err){
-								 console.log(err);
-								 res.status(200).json({})
-							 }else{
-								 console.log('Users group ' , response ) ; 
-								 res.status(201).json({grouplist : response })
-							 }
-						 })
-					 }
-				 })
+				 res.status(result.code).json( {} ) ;
 			 }
-		 })
+		})
 	})
 	
 	app.post('/getAllGroups',authenticate ,   function(req, res) {
 		 var email = req.body.email ;
 		 
-		 var collection = db.collection('groups');
-		 collection.find({members : {$elemMatch : { email : email } }}).toArray(function(err , response){
-			 if(err){
-				 console.log(err);
-				 res.status(200).json({})
+		 var apiObject = {"api" : "getAllGroups" ,
+				 "email":email
+				 } ; 
+		 
+		 
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			 if(result.grouplist != null ){
+				 res.status(result.code).json( { grouplist : result.grouplist } ) ;
 			 }else{
-				 console.log('Users group ' , response ) ; 
-				 res.status(201).json({grouplist : response })
+				 res.status(result.code).json( {} ) ;
 			 }
+			 
 		 })
 	})
 	  
+	
+	
+	
 	app.post('/addMemberToGroup',authenticate ,   function(req, res) {
 		 var email = req.body.email ;
 		 var emailToAdd = req.body.emailtoadd 
 		 var groupname = req.body.groupname ;
 		 var group_id = req.body.group_id ; 
-		 console.log('Before query ') ; 
+		
+		var apiObject = {"api" : "addMemberToGroup" ,
+							 email : email,
+							 emailToAdd : emailToAdd,
+							 groupname : groupname ,
+							 group_id : group_id 
+							 } ; 
 		 
-		 group_id = new ObjectID(group_id) ;
-		 console.log('GroupID ' , group_id) ; 
-		 console.log(email , emailToAdd , groupname ) ; 
 		 
-		 
-		 
-		 
-		 var collection = db.collection('groups');
-		 collection.find({_id : group_id , members: {$elemMatch : { email : emailToAdd }} }).toArray(function(err , response){
-			 if(response[0]){
-				 res.status(401).json({})
-			 }else{
-				 console.log('User not present , need to add ') ; 
-				 var emailToAddObj = {
-						email: emailToAdd , "group_owner" : email 
-				 } ;
-				 
-				 collection.update({_id : group_id} , {$addToSet: {members : emailToAddObj }} , function(err , response ){
-					 if(err){
-						 console.log(err)
-					 }else{
-						 res.status(201).json({}) ; 
-					 }
-				 })
-			 }
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			 console.log('result.code ' , result.code) ; 
+			 res.status(result.code).json({})
+			 
 		 })
 	})
 	
@@ -216,21 +187,24 @@ module.exports = function(app , db , connection  ){
 		 var email = req.body.email ;
 		 var group_id = req.body.group_id ;
 		
-		 group_id = new ObjectID(group_id) 
-		  
-		 var collection = db.collection('groups');
-		 
-		 collection.find({_id : group_id } , {members : 1 }).toArray(function(err , response ){
-			if(err){
-				console.log(error);
-				res.status(500).json({})
-			}else{
-				if(response[0]){
-					
-					res.status(200).json({groupMemberList  : response[0].members })
-				}
-			}
+		 var apiObject = {"api" : "getMembersOfGroup" ,
+							 email : email,
+							 group_id : group_id 
+							 } ; 
+
+
+		kafka.make_request('dropbox_app',apiObject , function(err,result){
+			 console.log("Result " , result ) ; 
+				
+			 if(result.groupMemberList === null){
+				 res.status(result.code).json({})
+			 }else{
+				 res.status(result.code).json({groupMemberList : result.groupMemberList})
+			 }
+ 
 		})
+		  
+		 
 	})
 	
 	app.post('/deleteMembersOfGroup', authenticate ,   function(req, res) {
@@ -239,88 +213,60 @@ module.exports = function(app , db , connection  ){
 		 var membertodelete = req.body.membertodelete ; 
 		 var group_id = req.body.group_id ; 
 		 
-		 console.log('Memeber to delete ' , email , groupname , membertodelete  , group_id ) ; 
-		 group_id = new ObjectID(group_id) 
-		 var collection = db.collection('groups');
+		 var apiObject = {"api" : "deleteMembersOfGroup" ,
+							 email : email,
+							 groupname : groupname,
+							 membertodelete : membertodelete,
+							 group_id : group_id 
+						  } ; 
 		 
-		 collection.find({_id : group_id , members: {$elemMatch : { email : membertodelete }}  }).toArray(function(err , response ){
-				if(err){
-					console.log(error);
-					res.status(500).json({})
-				}else{
-					if(response[0]){
-						//group found 
-						console.log('Group and member found ') ; 
-						 var emailToAddObj = {
-									email: membertodelete , "group_owner" : email 
-							 } ;
-						collection.update({_id : group_id} , {$pull: {members : emailToAddObj }} , function(err , response){
-							if(err){
-								console.log(error)
-							}else{
-								console.log('Deleted fuccessfully ') ; 
-								 
-								 collection.find({_id : group_id } , {members : 1 }).toArray(function(err , response ){
-									if(err){
-										console.log(error);
-										res.status(500).json({})
-									}else{
-										if(response[0]){
-											
-											res.status(200).json({groupMemberList  : response[0].members })
-										}
-									}
-								})
-							}
-						})
-						
-					}
-				}
-			})
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			 if(result.groupMemberList === null){
+				 res.status(result.code).json({})
+			 }else{
+				 res.status(result.code).json({groupMemberList : result.groupMemberList})
+			 }
+ 
+		 })
 	})
 	
 	
 	 app.post('/deleteGroup', authenticate ,  function(req, res) {
 		 var email = req.body.email ;
-		 var groupname = req.body.groupname ;
 		 var group_id = req.body.group_id ;
 		 
-		 group_id = new ObjectID(group_id) 
-		 var collection = db.collection('groups');
-		 
-		 collection.remove({_id : group_id } , function(err , response ){
-			 if(err){
-				 console.log(err)
-			 }else{
-				 var collection = db.collection('groups');
-				 collection.find({members : {$elemMatch : { email : email } }}).toArray(function(err , response){
-					 if(err){
-						 console.log(err);
-						 res.status(200).json({})
-					 }else{
-						 console.log('Users group ' , response ) ; 
-						 res.status(201).json({grouplist : response })
-					 }
-				 })
-			 }
+		 var apiObject = {"api" : "deleteGroup" ,
+				 email : email,
+				 group_id : group_id 
+			  } ; 
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			if(result.grouplist === null){
+				res.status(result.code).json({})
+			}else{
+				res.status(result.code).json({grouplist : result.grouplist})
+			}
 		 })
+		 
 	})
 	
 	
 	app.post('/getAllUsers', authenticate ,  function(req, res) {
 		 var email = req.body.email ;
+		 var apiObject = {"api" : "getAllUsers" ,
+				 email : email
+			  } 
 		 
-		 var collection = db.collection('users');
 		 
-		 collection.find({"email" : {$ne : email }} , {"email" : 1 }).toArray(function(err , result){
-			 if(err){
-				 console.log(err);
-				 res.status(500).json({})
-			 }else{
-				 console.log("Users " , result.length ) ;
-				 res.status(200).json({allUsers : result })
-			 }
-		 })
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			 console.log("All users " , result ) ; 
+				if(result.allUsers === null){
+					res.status(result.code).json({})
+				}else{
+					res.status(result.code).json({allUsers : result.allUsers})
+				}
+		})
+		 
+		 
 	})
 	
 	
@@ -333,36 +279,20 @@ module.exports = function(app , db , connection  ){
 		 var profession = req.body.profession ;
 		 var lifeevents = req.body.lifeevents ;
 		
+		 var apiObject = {"api" : "submitProfile" ,
+				 email : email,
+				 about : about , 
+				 education : education ,
+				 profession : profession ,
+				 lifeevents : lifeevents
+			  } 
+		 
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			res.status(result.code).json({})
+		})
 		 
 		 
-		 var collection = db.collection('profile');
 		 
-		 collection.find({email : email }).toArray(function(err , result){
-			 if(err){
-				 console.log(err);
-				 res.status(500).json({})
-			 }else{
-				 if(result[0]){
-					 res.status(400).json(result[0])
-				 }else{
-					 var obj = {
-							 email : email  ,
-							 about : about  ,
-							 education  : education ,
-							 profession : profession  ,
-							 lifeevents : lifeevents 
-					 }
-					 collection.insertOne(obj , function(err , response){
-						 if(err){
-							 console.log(err);
-							 res.status(500).json({})
-						 }else{
-							 res.status(200).json({})
-						 }
-					 })
-				 }
-			 }
-		 })
 	})
 	 
 	 
@@ -386,21 +316,13 @@ module.exports = function(app , db , connection  ){
 	app.post('/getProfile' , authenticate ,  function(req, res) {
 		 var email = req.body.email ;
 		
-		 console.log(email ) ; 
+		 var apiObject = {"api" : "getProfile" ,
+				 email : email,
+				} 
 		 
-		 var collection = db.collection('profile') ; 
-		 
-		 collection.find({email : email }).toArray(function(err , result){
-			 console.log("Result " , result [0]) ; 
-			 if(result[0]){
-				 console.log("Profile " , result[0]); 
-				 res.status(200).json({ profile : result[0] })
-			 }else{
-				 res.status(200).json({ profile : null })
-			 }
-		 })
-		 
-		 
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			res.status(result.code).json({profile : result.profile});
+		})
 	})
 	
 	app.post('/readallfiles', authenticate ,   function(req, res) {
@@ -408,16 +330,16 @@ module.exports = function(app , db , connection  ){
 		 var path = 'public/Images/'+email;
 		 var directory = req.body.directory ; 
 		 
+		 var apiObject = {"api" : "readallfiles" ,
+				 email : email,
+				 path : path,
+				 directory : directory
+				} 
 		 
-		 var collection = db.collection('user_files') ;  
-		 
-		 collection.find({email : email , directory : directory , is_deleted : 0 }).toArray(function(err, result){
-			 if(err){
-				 console.log(err)
-			 }else{
-				 res.status(200).json({filelist : result})
-			 }
-		 })
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+				res.status(result.code).json({filelist : result.filelist});
+			})
+		
 	})
 	
 	 app.post('/createFolder', authenticate ,  function(req, res) {
@@ -464,23 +386,19 @@ module.exports = function(app , db , connection  ){
 					 is_deleted : is_deleted  
 			 }
 			 
-			 var collection = db.collection('user_files') ;
+			//Kafka code 
+			 var apiObject = {"api" : "createFolder" ,
+					 email : email,
+					 directory : directory,
+					 folderInsertObject : folderInsertObject
+					}; 
 			 
-			 collection.insertOne(folderInsertObject , function(err , result){
-				 if(err){
-					 console.log(err);
-					 res.status(500).json({})
-				 }else{
-					 collection.find({email : email , directory : directory , is_deleted : 0 }).toArray(function(err , result){
-						 if(err){
-							 console.log(err);
-						 }else{
-							 collection.find({ email : email , is_deleted : 0 }).toArray(function(err, result2){
-								 res.status(200).json({filelist : result , recent_files : result2})
-							 })
-						 }
-					 })
-				 }
+			 kafka.make_request('dropbox_app',apiObject , function(err,result){
+				if(result.code === 500){
+					res.status(result.code).json({})
+				}else{
+					res.status(result.code).json({recent_files : result.recent_files , filelist : result.filelist})
+				}	
 			 })
 		}else{
 			 res.status(400).json({ success : false , error : 'Foolder already present'})
@@ -493,72 +411,21 @@ module.exports = function(app , db , connection  ){
 		 var email = req.body.email; 
 		 var file_name = req.body.filename ;
 		 var directory = req.body.directory ; 
-		 console.log('Directory ' , directory )
+		 console.log("Unstar " , email ) ; 
 		 
-		  var collection = db.collection('user_files') ; 
+		 var apiObject = {"api" : "unStarfile" ,
+						 email : email,
+						 directory : directory,
+						 file_name : file_name
+						}; 
 		 
-		 
-		 collection.find({ email : email , file_name : file_name  , 
-			 			 directory : directory , is_deleted : 0 }).toArray(function(err , result){
-			 				if(err){
-			 					 console.log(err);
-			 					res.status(500).json({})
-			 				 }else{
-			 					 var starred = 0 ;
-			 					var updateObj = {
-										email : result[0].email ,
-										file_name : result[0].file_name,
-										starred : starred,
-										is_directory : result[0].is_directory,
-										directory :  result[0].directory,
-										file_add_date : result[0].file_add_date ,
-										is_deleted : result[0].is_deleted
-										}
-			 					
-			 					collection.update({email : email , file_name : file_name  , 
-	 						 		directory : directory , is_deleted : 0 } ,
-	 						 		updateObj , function(err , response){
-	 						 	
-	 						 	if(err){
-	 						 		console.log(err);
-	 						 	}else{
-	 						 		
-	 						 		collection.find({email : email , is_deleted : 0 , 
-	 						 			starred : 1 }).toArray(function(err , result){
-	 						 				if(err){
-	 						 					console.log(err);
-	 						 					res.status(500).json({})
-	 						 				}else{
-	 						 					
-	 						 					collection.find({email : email , directory : directory , 
-	 						 						is_deleted : 0 }).toArray(function(err , result2){
-				 						 				if(err){
-				 						 					console.log(err);
-				 						 					res.status(500).json({})
-				 						 				}else{
-				 						 				 
-				 						 					collection.find({email : email  , 
-				 						 						is_deleted : 0 }).toArray(function(err , result3){
-							 						 				if(err){
-							 						 					console.log(err);
-							 						 					res.status(500).json({})
-							 						 				}else{
-							 						 				 
-							 						 					res.status(200).json({starred_data : result , filelist : result2 , recent_files : result3})
-							 						 					
-							 						 					
-							 						 				}
-							 						 			})
-				 						 					}
-				 						 			})
-	 						 				}
-	 						 			})
-	 						 	}
-	 					 })	
-			 					 
-			 				 }
-			 			 })
-		 
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			if(result.code === 500){
+				res.status(result.code).json({})
+			}else{
+				res.status(result.code).json({starred_data : result.starred_data , filelist : result.filelist , recent_files : result.recent_files})
+			}
+		 })
 		 
 	})
 	
@@ -571,105 +438,51 @@ module.exports = function(app , db , connection  ){
 		 var file_name = req.body.filename ;
 		 var directory = req.body.directory ; 
 		 
-		 var collection = db.collection('user_files') ; 
 		 
-		 
-		 collection.find({ email : email , file_name : file_name  , 
-			 			 directory : directory , is_deleted : 0 }).toArray(function(err , result){
-			 				 if(err){
-			 					 console.log(err);
-			 					res.status(500).json({})
-			 				 }else{
-			 					 console.log('Starred ' , result[0].starred)
-			 					 if(result[0].starred === 0 ){
-			 						var starred = 1 ;
-			 					 }else if(result[0].starred === 1){
-			 						var starred = 0 ;
-			 					 }
-			 					 
-			 					var updateObj = {
-										email : result[0].email ,
-										file_name : result[0].file_name,
-										starred : starred,
-										is_directory : result[0].is_directory,
-										directory :  result[0].directory,
-										file_add_date : result[0].file_add_date ,
-										is_deleted : result[0].is_deleted
-										}
-			 					 
-			 					 
-			 					 collection.update({email : email , file_name : file_name  , 
-			 						 		directory : directory , is_deleted : 0 } ,
-			 						 		updateObj , function(err , response){
-			 						 	
-			 						 	if(err){
-			 						 		console.log(err);
-			 						 	}else{
-			 						 		
-			 						 		collection.find({email : email , is_deleted : 0 , 
-			 						 			starred : 1 }).toArray(function(err , result){
-			 						 				if(err){
-			 						 					console.log(err);
-			 						 					res.status(500).json({})
-			 						 				}else{
-			 						 					
-			 						 					collection.find({email : email , directory : directory , 
-			 						 						is_deleted : 0 }).toArray(function(err , result2){
-						 						 				if(err){
-						 						 					console.log(err);
-						 						 					res.status(500).json({})
-						 						 				}else{
-						 						 				 
-						 						 					collection.find({email : email  , 
-						 						 						is_deleted : 0 }).toArray(function(err , result3){
-									 						 				if(err){
-									 						 					console.log(err);
-									 						 					res.status(500).json({})
-									 						 				}else{
-									 						 				 
-									 						 					res.status(200).json({starred_data : result , filelist : result2 , recent_files : result3})
-									 						 					
-									 						 					
-									 						 				}
-									 						 			})
-						 						 					}
-						 						 			})
-			 						 				}
-			 						 			})
-			 						 	}
-			 					 })	
-			 				}
-			 			 })
+		 var apiObject = {"api" : "starFile" ,
+				 email : email,
+				 directory : directory,
+				 file_name : file_name
+				}; 
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+				if(result.code === 500){
+					res.status(result.code).json({})
+				}else{
+					res.status(result.code).json({starred_data : result.starred_data , filelist : result.filelist , recent_files : result.recent_files})
+				}
+			 })
 	})
 	
 	
 	app.post('/readallStarredfiles', authenticate ,   function(req, res) {
 			 var email = req.body.email ; 
-			 var collection = db.collection('user_files') ; 
-			 
-			 collection.find({starred : 1 , email : email  , is_deleted  : 0 }).toArray(function(err , result){
-				if(err){
-					console.log(err);
-					res.status(500).json({})
-				} else{
-					 res.status(200).json({starred_data : result})
-				}
-			 })
+			 var apiObject = {"api" : "readallStarredfiles" ,
+					 email : email,
+					};
+			 kafka.make_request('dropbox_app',apiObject , function(err,result){
+					console.log("Starred Data " , result)
+				   if(result.code === 500){
+						res.status(result.code).json({})
+					}else{
+						res.status(result.code).json({starred_data : result.starred_data})
+					}
+			})
 	})
 	
 	app.post('/readRecentfiles', authenticate ,   function(req, res) {
 		 var email = req.body.email ; 
-		 var collection = db.collection('user_files') ; 
-		 
-		 collection.find({ email : email  , is_deleted  : 0 }).toArray(function(err , result){
-				if(err){
-					console.log(err);
-					res.status(500).json({})
-				} else{
-					
-					 res.status(200).json({recent_items : result})
+		
+		 var apiObject = {"api" : "readRecentfiles" ,
+				 email : email,
+				};
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+				console.log("Starred Data " , result)
+			   if(result.code === 500){
+					res.status(result.code).json({})
+				}else{
+					res.status(result.code).json({recent_items : result.recent_items})
 				}
-			 })
+		})
 		
 	})
 	
@@ -679,22 +492,20 @@ module.exports = function(app , db , connection  ){
 		 var email = req.body.email ;
 		 var group_id = req.body.group_id ; 
 		 
-		 console.log('Group id')
+		 var apiObject = {"api" : "getGroupName" ,
+				 email : email,
+				 group_id : group_id
+				};
 		 
-		 group_id = new ObjectID(group_id) ;
-		 
-		 
-		 
-		 var collection = db.collection('groups') ; 
-		 
-		 collection.find({_id : group_id } ,  {group_name : 1 }).toArray(function(err, result){
-			 if(err){
-				 console.log(err);
-				 res.status(500).json({})
-			 }else{
-				 res.status(200).json({groupname : result[0].group_name})
-			 }
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			if(result.code === 500){
+					res.status(result.code).json({})
+				}else{
+					res.status(result.code).json({groupname : result.groupname})
+				}
 		 })
+		 
+		 
 		
 	 })
 	
@@ -841,34 +652,20 @@ module.exports = function(app , db , connection  ){
 		 var toUser = req.body.toUser ; 
 		 var is_directory = req.body.is_directory ; 
 		 
-		 var collection = db.collection('user_shared_files') ; 
+		 var apiObject = {"api" : "shareFile" ,
+				 file_name : file_name,
+				 directory : directory ,
+				 fromUser : fromUser,
+				 toUser : toUser,
+				 is_directory : is_directory
+				};
 		 
-		 collection.find({from_user : fromUser , to_email : toUser , 
-			 			filename : file_name , directory : directory ,
-			 			is_directory : is_directory }).toArray(function(err , result){
-			 if(err){
-				 console.log(error);
-				 res.status(500).json({})
-			 }else{
-				 if(result[0]){
-					 res.status(400).json({})
-				 }else{
-					 var shareObj = {from_user : fromUser ,
-							 	to_email : toUser , 
-					 			filename : file_name ,
-					 			directory : directory,
-					 			is_directory : is_directory}
-					 collection.insert(shareObj , function(err , response){
-						 if(err){
-							 console.log(error);
-							 res.status(500).json({})
-						 }else{
-							 res.status(200).json({success : true})
-						 }
-					 })
-				 }
-			 }
-			 				
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+				if(result.success === null){
+					res.status(result.code).json({})
+				}else{
+					res.status(result.code).json({success : result.success})
+				}
 		 })
 		 
 	})
@@ -877,18 +674,18 @@ module.exports = function(app , db , connection  ){
 	 app.post('/getAllSharedFile', authenticate ,   function(req, res) {
 		 var email = req.body.email ;
 		
-		 var collection = db.collection('user_shared_files') ; 
+		 var apiObject = {"api" : "getAllSharedFile" ,
+				 email : email 
+				};
 		 
-		 collection.find({to_email : email }).toArray(function(err , result){
-			 if(err){
-				 console.log(err);
-				 res.status(500).json({})
-			 }else{
-				 res.status(200).json({filelist : result})
-			 }
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+				if(result.filelist === null){
+					res.status(result.code).json({})
+				}else{
+					res.status(result.code).json({filelist : result.filelist})
+				}
 		 })
-		 
-	 })
+	})
 	
 	 
 	 app.post('/readFolderForIndividuals', authenticate ,  function(req, res) {
@@ -898,15 +695,19 @@ module.exports = function(app , db , connection  ){
 		 var foldername = req.body.foldername ; 
 		 var directory = req.body.directory ; 
 		 
-		 var collection = db.collection('user_files') ; 
+		 var apiObject = {"api" : "readFolderForIndividuals" ,
+				 email : email ,
+				 folderowner : folderowner ,
+				 foldername : foldername ,
+				 directory : directory
+				};
 		 
-		 collection.find({email : folderowner , directory : foldername }).toArray(function(err , result){
-			 if(err){
-				 console.log(err);
-				 res.status(200).json({})
-			 }else{
-				 res.status(200).json({subGroupContent : result})
-			 }
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+				if(result.subGroupContent === null){
+					res.status(result.code).json({})
+				}else{
+					res.status(result.code).json({subGroupContent : result.subGroupContent})
+				}
 		 })
 		 
 		 
@@ -1022,6 +823,7 @@ module.exports = function(app , db , connection  ){
 		        if(user === false ){
 		        	res.status(200).json({loggedIn : false , user : null})
 		        }else{
+		        	console.log("Login ------ " , user.user_id)
 		        	req.login(user.user_id , function(err ){
 			        	console.log(' ...Requesting');
 			        	res.status(200).json({loggedIn : true , user : user})
@@ -1053,74 +855,44 @@ module.exports = function(app , db , connection  ){
 		 var groupowner = req.body.groupowner ; 
 		 var is_directory = req.body.isDirectory ; 
 		 
-		 var collection = db.collection('groups');
-		
+		 var apiObject = {"api" : "shareFileWithGroup" ,
+				 file_owner : file_owner ,
+				 groupname : groupname ,
+				 filename : filename ,
+				 directory : directory,
+				 groupowner : groupowner ,
+				 is_directory : is_directory
+				};
 		 
-		 
-		 collection.find({groupowner : groupowner , group_name : groupname , 
-			 filelist: {$elemMatch : { group_name : groupname ,file_owner :file_owner ,filename: filename ,
-				 file_directory : directory , group_owner : groupowner , is_directory : is_directory }} }).toArray(function(err , response){
-			 if(response[0]){
-				 res.status(401).json({})
-			 }else{
-				 console.log('File not shared  , need to add ') ; 
-				 var shareFileAdd = {
-						 group_name : groupname ,
-						 file_owner :file_owner ,
-						 filename: filename ,
-						 file_directory : directory ,
-						 group_owner : groupowner,
-						 is_directory : is_directory
-				 } ;
-				 
-				 collection.update({groupowner : groupowner , group_name : groupname} , {$addToSet: {filelist : shareFileAdd }} , function(err , response ){
-					 if(err){
-						 console.log(err)
-					 }else{
-						
-						 collection.find({groupowner : groupowner , group_name : groupname}).toArray(function(err , result){
-							 if(err ){
-									console.log('Error while fetching data ' , err);
-									res.status(500).json({})
-								} 
-								else{
-									res.status(200).json({groupFileList : result})
-								}
-						 })
-						 
-					 }
-				 })
-			 }
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+				if(result.groupFileList === null){
+					res.status(result.code).json({})
+				}else{
+					res.status(result.code).json({groupFileList : result.groupFileList})
+				}
 		 })
+		 
+		 
 	})
 	 
 	
 	app.post('/getAllSharedGroupComponents', authenticate ,  function(req, res) {
 		 var email = req.body.email ;
 		 var group_id = req.body.group_id ; 
-		 group_id = new ObjectID(group_id) 
 		 
-		 var collection = db.collection('groups');
+		 var apiObject = {"api" : "getAllSharedGroupComponents" ,
+				 email : email ,
+				 group_id : group_id 
+			};
 		 
-		 collection.find({_id : group_id } , {filelist : 1 }).toArray(function(err , response ){
-			if(err){
-				console.log(error);
-				res.status(500).json({})
-			}else{
-				if(response[0]){
-					console.log("Shared component " ,  response.length ) ; 
-					if(response[0].filelist == null ){
-						res.status(200).json({filelist  : [] })
-					}else{
-						res.status(200).json({filelist  : response[0].filelist })
-					}
-					
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+				if(result.filelist === null){
+					res.status(result.code).json({})
+				}else{
+					res.status(result.code).json({filelist : result.filelist})
 				}
-			}
-		})
-		
-		
-	 })
+		 })
+	})
 	
 	 app.post('/readFolderForGroups', authenticate ,   function(req, res) {
 		 var email = req.body.email ; 
@@ -1128,33 +900,35 @@ module.exports = function(app , db , connection  ){
 		 var foldername = req.body.foldername ; 
 		 var directory = req.body.directory ; 
 		 
+		 var apiObject = {"api" : "readFolderForGroups" ,
+				 email : email ,
+				 folderowner : folderowner ,
+				 foldername : foldername ,
+				 directory : directory
+			};
 		 
-		 var collection = db.collection('user_files') ; 
-		 
-		 collection.find({email : folderowner , directory : foldername }).toArray(function(err , result){
-			 if(err){
-				 console.log(err);
-				 res.status(200).json({})
-			 }else{
-				 res.status(200).json({subGroupContent : result})
-			 }
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+				if(result.subGroupContent === null){
+					res.status(result.code).json({})
+				}else{
+					res.status(result.code).json({subGroupContent : result.subGroupContent})
+				}
 		 })
+		
 	})
 	
 	
 	app.post('/getFilesHistory', authenticate ,   function(req, res) {
 		 var email = req.body.email ;
-		
-		 var collection = db.collection('user_files') ;
+		 var apiObject = {"api" : "getFilesHistory" ,
+				 email : email
+			};
 		 
-		 collection.find({is_deleted : 1 ,email : email  }).toArray(function(err , result){
-			 if(err){
-				 console.log(err);
-				 res.status(500).json({ profile : 'Error while getting profile ' })
-			 }else{
-				 res.status(200).json({ profile : result })
-			 }
-		 })
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			 console.log('Files History ' , result.profile);  
+			 res.status(result.code).json({profile : result.profile})
+		})
+		 
 	})
 
 	 
@@ -1165,8 +939,6 @@ module.exports = function(app , db , connection  ){
 		 var file =  req.query.file;
 		 var directory =  req.query.directory;
 		 var fileowner =  req.query.fileowner;
-		 console.log(email , file , directory , fileowner) ; 
-		 
 		 
 		 if(email === fileowner ){
 			 var path = 'public/Images/'+email;
@@ -1184,9 +956,6 @@ module.exports = function(app , db , connection  ){
 		 }else{
 			 path = path + '/' + directory + '/' ; 
 		 }
-		 
-		 
-		 console.log('Path ' , path ) ; 
 		 
 		 var file = path + file;
 		 res.download(file);

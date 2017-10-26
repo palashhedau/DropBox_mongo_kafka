@@ -19,9 +19,10 @@ export function createGroup(email , groupname)  {
 	   	    body: JSON.stringify({email: email, groupname: groupname})
 
 	  		}).then(function (response) {
-			       
+			       console.log(response) ;
 			      response.json().then(res => {
-			      	console.log('res ' , res )
+			      	console.log(res) ; 
+			      	console.log('res ' ,  res.grouplist )
 
 			      dispatch({type : 'CREATE_GROUP_SUCCESS' , payload :   res.grouplist })
 			      
