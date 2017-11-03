@@ -1,5 +1,10 @@
  body{
     font-family: 'Ubuntu', sans-serif;
     overflow-x:hidden;
+
+  }
+
+  .textCenter{
+  	text-align: center;
   }
   

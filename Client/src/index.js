@@ -7,6 +7,7 @@ import store  from './store'
 import  setAuthorizationToken from './utils/setAuthorizationToken'
 import jwtDecode from 'jwt-decode' ;
 import {checkIfAldreadyLoggedIn} from './actions/authAction'
+import './index.css';
 //Pages
 import Home from './components/LoggedIn/Home'
 import Registration from './components/BeforeLoggedIn/Registration'

@@ -1,3 +1,4 @@
+var ObjectID = require('mongodb').ObjectID
 
 function getAllUsers(msg, db ,  callback){
 
@@ -90,13 +91,48 @@ function getProfile(msg, db ,  callback){
                  callback(null , res )
              }
          })
-         
+}
 
+
+
+function checkIfAlreadyLoggedIn(msg, db ,  callback){
+
+    var res = {};
+    
+    var user = msg.user ; 
+    user = new ObjectID(user) ;
+    
+    
+    var collection = db.collection('users');
+         
+         collection.find({_id : user}).toArray(function(err , result){
+             console.log(result[0]); 
+             if(result[0]){
+                 user  =  { email : result[0].email ,
+                        fname : result[0].fname ,
+                            lname : result[0].lname ,
+                        dob : result[0].dob ,
+                        gender : result[0].gender} 
+                        
+                    res.code = 200 ; 
+                    res.loggedIn = true ; 
+                    res.user = user ;
+                    callback(null , res) ;
+                 
+                 
+             }else{
+                    res.code = 200 ; 
+                    res.loggedIn = false ; 
+                    res.user = null ;
+                    callback(null , res) ;
+             }
+        })
 
 }
 
 
 
+exports.checkIfAlreadyLoggedIn = checkIfAlreadyLoggedIn;
 exports.getProfile = getProfile;
 exports.submitProfile = submitProfile;
 exports.getAllUsers = getAllUsers;

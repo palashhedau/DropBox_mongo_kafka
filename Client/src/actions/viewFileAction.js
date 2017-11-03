@@ -9,16 +9,18 @@ const headers = {
 
 
 export function viewFile(email , file , directory )  {
-	
+	console.log("WALLLAAAAA")
 	axios.get('http://localhost:3002/downloadFile',{responseType: 'blob',  params: {
 		      email: email,
 		      file : file ,
 		      directory : directory
-		    }
+		    },
+		    withCredentials: true
 	  })
 	  .then(function (response) {
 	  	
-	    console.log(response)
+	    console.log("Response for new download ") ; 
+	    console.log(response) ; 
 		FileSaver.saveAs(response.data, file);
 	    	
 
@@ -39,7 +41,8 @@ export function viewFileForGroup(email , fileowner , file , directory )  {
 		      file : file ,
 		      directory : directory,
 		      fileowner : fileowner
-		    }
+		    },
+		    withCredentials: true
 	  })
 	  .then(function (response) {
 	  	
@@ -51,6 +54,12 @@ export function viewFileForGroup(email , fileowner , file , directory )  {
 	  .catch(function (error) {
 	   		
 	  })
+
+
+
+
+
+
 	
 	
 }

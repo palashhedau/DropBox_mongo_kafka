@@ -6,6 +6,7 @@ import {connect} from 'react-redux'
 import {deleteFile} from '../../actions/uploadFileAction'
 import {shareFile} from '../../actions/shareFileAction'
 import {deleteGroup , addMembersToTheGroup} from '../../actions/GroupAction'
+import Modal from 'react-modal'
 
 class GroupComponent extends Component{
 
@@ -16,7 +17,8 @@ class GroupComponent extends Component{
 			groupname : '' ,
 			showButtonOrDropDown : 'Button' ,
 			addTogroup : '' ,
-			groupUrl : '/groups/'
+			groupUrl : '/groups/',
+			modalIsOpen: false
 		}
 	}
 
@@ -33,7 +35,16 @@ class GroupComponent extends Component{
 			paddingLeft : "10px"
 		}
 
-		
+		const customStyles = {
+	      content : {
+	        top                   : '40%',
+	        left                  : '50%',
+	        right                 : '50%',
+	        bottom                : 'auto',
+	        marginRight           : '-50%',
+	        transform             : 'translate(-50%, -50%)'
+	      }
+	    };
 
 		return (
 				 <li   className="list-group-item padd">
@@ -43,11 +54,32 @@ class GroupComponent extends Component{
 				 	{
 				 		this.props.email === this.props.group.groupowner ? 
 				 		<button onClick={() => {
-				 		this.props.deleteGroup(this.props.email , this.props.group.group_name , this.props.group._id)
+				 			this.setState({
+				 				modalIsOpen : true
+				 			})
 				 		}} style={stylePadding} className="btn btn-danger pull-right btn-xs">Delete</button> 
 				 		: 
 				 		<b></b>
 				 	}
+
+					<Modal
+                        isOpen={this.state.modalIsOpen}
+                        style= {customStyles}
+                        onRequestClose={this.closeModal}
+                        shouldCloseOnOverlayClick={false}
+                        contentLabel="Profile">
+
+                        
+						    <h4 className="modal-title textCenter">Are you sure you want to delete the group ?</h4>
+							   <div className="modal-footer">
+									       <button type="button" className="btn btn-danger"  onClick={() => {
+									 		this.props.deleteGroup(this.props.email , this.props.group.group_name , this.props.group._id)
+									 		}} >Delete</button>
+									       <button type="button" className="btn btn-default" onClick={() => {
+			                      				this.setState({modalIsOpen: false});
+			                      			}}>Dismiss</button>
+								</div>
+                      </Modal>
 
 				 	
 				 	{

@@ -430,7 +430,99 @@ consumer.on('message', function (message) {
                         
                         return;
                 })
+        }else if(apiToCall === 'downloadFile'){
+                files.downloadFile(data.data, db ,  function(err,res){
+                   // console.log('History ' , res.data)
+                        var payloads = [
+                            { topic: data.replyTo,
+                                messages:JSON.stringify({
+                                    correlationId:data.correlationId,
+                                    data : res
+                                }),
+                                partition : 0
+                            }
+                        ];
+                        producer.send(payloads, function(err, data){
+                            console.log(data);
+                        });
+                        
+                        return;
+                })
+        }else if(apiToCall === 'upload'){
+                files.upload(data.data, db ,  function(err,res){
+                   // console.log('History ' , res.data)
+                        var payloads = [
+                            { topic: data.replyTo,
+                                messages:JSON.stringify({
+                                    correlationId:data.correlationId,
+                                    data : res
+                                }),
+                                partition : 0
+                            }
+                        ];
+                        producer.send(payloads, function(err, data){
+                            console.log(data);
+                        });
+                        
+                        return;
+                })
+        }else if(apiToCall === 'delete'){
+                files.deleteFile(data.data, db ,  function(err,res){
+                   // console.log('History ' , res.data)
+                        var payloads = [
+                            { topic: data.replyTo,
+                                messages:JSON.stringify({
+                                    correlationId:data.correlationId,
+                                    data : res
+                                }),
+                                partition : 0
+                            }
+                        ];
+                        producer.send(payloads, function(err, data){
+                            console.log(data);
+                        });
+                        
+                        return;
+                })
+        }else if(apiToCall === 'registration'){
+                login.registration(data.data, db ,  function(err,res){
+                   // console.log('History ' , res.data)
+                        var payloads = [
+                            { topic: data.replyTo,
+                                messages:JSON.stringify({
+                                    correlationId:data.correlationId,
+                                    data : res
+                                }),
+                                partition : 0
+                            }
+                        ];
+                        producer.send(payloads, function(err, data){
+                            console.log(data);
+                        });
+                        
+                        return;
+                })
+        }else if(apiToCall === 'checkIfAlreadyLoggedIn'){
+                users.checkIfAlreadyLoggedIn(data.data, db ,  function(err,res){
+                   // console.log('History ' , res.data)
+                        var payloads = [
+                            { topic: data.replyTo,
+                                messages:JSON.stringify({
+                                    correlationId:data.correlationId,
+                                    data : res
+                                }),
+                                partition : 0
+                            }
+                        ];
+                        producer.send(payloads, function(err, data){
+                            console.log(data);
+                        });
+                        
+                        return;
+                })
         }
+        
+
 
     
 

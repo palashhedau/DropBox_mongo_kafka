@@ -20,8 +20,25 @@ var ObjectID = require('mongodb').ObjectID
 //Kafka
 var kafka = require('../middleware/kafka/client');
 
+var FileReader = require('filereader');
+
+
+//Mongoose 
+var mongoose = require('mongoose');
+let Grid = require('gridfs-stream');
+let conn = mongoose.connection ; 
+Grid.mongo = mongoose.mongo ;
+let gfs ; 
+
+//Buffer 
+var JSONB = require('json-buffer')
+var Buffer2 = require('buffer').Buffer
+
 
 module.exports = function(app , db , connection  ){
+	
+	gfs = Grid(db);
+	
 	
 	app.use(session({
 		secret: 'fdghghjhjlfggnhmjmffsfdscdffbvgfgfg',
@@ -39,31 +56,51 @@ module.exports = function(app , db , connection  ){
 	
 	app.use(upload()) ; 
 	
+	app.post('/upload' , authenticate ,    function(req, res) {
+		var email = req.body.email ; 
+		var starred = 0 ; 
+		var is_directory = 0 ; 
+		var directoryToUpload = req.body.directory ; 
+		
+		var currentdate = new Date();
+		var datetime =  currentdate.getFullYear() + '-' + (currentdate.getMonth()+1) + '-' + currentdate.getDate() + " "+ 
+		currentdate.getHours() + ":" + currentdate.getMinutes() + ":" + currentdate.getSeconds();
+		
+		var is_deleted = 0 ; 
+		
+		console.log(req.files.file.data)
+		
+		 var apiObject = {"api" : "upload" ,
+				 email : email,
+				 starred : starred ,
+				 is_directory : is_directory,
+				 directoryToUpload : directoryToUpload ,
+				 datetime : datetime ,
+				 is_deleted : is_deleted , 
+				 file : req.files.file
+				}
+ 
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			if(result.code === 200){
+				res.status(result.code).json({filelist : result.filelist , recent_files : result.recent_files})
+			}else{
+				res.status(result.code).json({})
+			}
+		})
+	});
+	
+	
+	
+	
 	app.post('/checkIfAlreadyLoggedIn' , authenticate , function(req,res){
 		 var user = req.user ; 
-		 console.log('user ' , user ); 
-		 user = new ObjectID(user) ; 
 		 
-		 var collection = db.collection('users');
-		 
-		 collection.find({_id : user}).toArray(function(err , result){
-			 console.log(result[0]); 
-			 if(result[0]){
-				 console.log("User already loggedIn ");
-				 
-				 user  =  { email : result[0].email ,
-						fname : result[0].fname ,
-							lname : result[0].lname ,
-						dob : result[0].dob ,
-						gender : result[0].gender} 
-						
-				console.log('Already logged In ' , user)
-				 
-				 res.status(200).json({loggedIn : true, user : user}) ; 
-			 }else{
-				 console.log('No vali session exist ') ; 
-				 res.status(200).json({loggedIn : false , user : null })
-			 }
+		 var apiObject = {"api" : "checkIfAlreadyLoggedIn" ,
+				 user : user 
+				} ; 
+ 
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			res.status(result.code).json({loggedIn : result.loggedIn , user : result.user})
 		})
 	})
 	
@@ -80,43 +117,18 @@ module.exports = function(app , db , connection  ){
 		
 		
 		
-		var collection = db.collection('users');
-		
-		collection.find({email : email}).toArray(function(err , result){
-			if(err){
-				console.log(err)
-			}else{
-				if(result[0]){
-					console.log('User already present ' , result[0]); 
-					res.status(200).json({ success : false , error : 'User already present'})
-				}else{
-					
-					
-					const saltRounds = 10;
-					
-					bcrypt.hash(password, saltRounds, function(err, hash) {
-						var obj = {email : email ,
-								password : hash ,
-								fname : fname,
-								lname : lname  ,
-								dob : dob ,
-								gender : gender } ; 
-						
-						collection.insertOne(obj , function(err , response){
-							if(err){
-								console.log(err);
-								res.status(500).json({success : false , error : error})
-							}else{
-								res.status(200).json({success : true , error : '' })
-							}
-						})
-					})
-					
-				}
-			}
-		})
-		
-		
+		 var apiObject = {"api" : "registration" ,
+				 email : email,
+				 password : password ,
+				 fname : fname,
+				 lname : lname ,
+				 dob : dob ,
+				 gender : gender 
+				};
+ 
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			res.status(result.code).json({success : result.success , error : result.error });
+		 })
 	})
 		
 	
@@ -290,9 +302,6 @@ module.exports = function(app , db , connection  ){
 		 kafka.make_request('dropbox_app',apiObject , function(err,result){
 			res.status(result.code).json({})
 		})
-		 
-		 
-		 
 	})
 	 
 	 
@@ -302,7 +311,6 @@ module.exports = function(app , db , connection  ){
 		 var collection = db.collection('profile');
 		 
 		 collection.find({email : email }).toArray(function(err , result){
-			 console.log("Profile XXXXXXXX " , result[0])
 			 if(result[0]){
 				 res.status(200).json({user : result[0], profileExist : true})
 			 }else{
@@ -343,20 +351,12 @@ module.exports = function(app , db , connection  ){
 	})
 	
 	 app.post('/createFolder', authenticate ,  function(req, res) {
-		 var email = req.body.email ; 
-		 var foldername = req.body.foldername ; 
-		 var path = 'public/Images/'+email ; 
-		 var directory  = req.body.directory  ; 
+			 var email = req.body.email ; 
+			 var foldername = req.body.foldername ; 
+			 var path = 'public/Images/'+email ; 
+			 var directory  = req.body.directory  ; 
 		 
-		 if(directory === 'root'){
-			 var folderPath =  'public/Images/'+email+'/' + foldername;
-			 var path = 'public/Images/'+email
-		 }else{
-			 var folderPath =  'public/Images/'+email+'/' + directory + '/' + foldername ;
-			 var path = 'public/Images/'+email + '/' + directory
-		 }
-		 
-			var starred = 0 ; 
+		 	var starred = 0 ; 
 			var is_directory = 1 ; 
 			
 			
@@ -366,31 +366,25 @@ module.exports = function(app , db , connection  ){
 			
 			var is_deleted = 0 ; 
 			
-			
-			
-		 if(!fs.existsSync(path)){
-			 fs.mkdirSync(path , 0744);
-		 }
-			
-			
-		 if (!fs.existsSync(folderPath)) {
-			 fs.mkdirSync(folderPath , 0744);
-			 
-			 var folderInsertObject = {
+			var folderInsertObject = {
 					 email : email  ,
 					 file_name : foldername  ,
 					 starred : starred   , 
 					 is_directory : is_directory   ,
 					 directory : directory   ,
-					 file_add_date : datetime  , 
+					 file_add_date : new Date()  , 
 					 is_deleted : is_deleted  
 			 }
 			 
-			//Kafka code 
+			
 			 var apiObject = {"api" : "createFolder" ,
 					 email : email,
 					 directory : directory,
-					 folderInsertObject : folderInsertObject
+					 folderInsertObject : folderInsertObject,
+					 file_name : foldername  ,
+					 starred : starred   , 
+					 is_directory : is_directory   ,
+					 is_deleted : is_deleted  
 					}; 
 			 
 			 kafka.make_request('dropbox_app',apiObject , function(err,result){
@@ -399,10 +393,7 @@ module.exports = function(app , db , connection  ){
 				}else{
 					res.status(result.code).json({recent_files : result.recent_files , filelist : result.filelist})
 				}	
-			 })
-		}else{
-			 res.status(400).json({ success : false , error : 'Foolder already present'})
-		 }
+			 }) 
 	})
 	
 	
@@ -512,137 +503,24 @@ module.exports = function(app , db , connection  ){
 	
 	
 	app.post('/delete', authenticate ,  function(req, res) {
-	var email = req.body.email ; 
-	var filename = req.body.filename ; 
-	var directory = req.body.directory ; 
-	
-	if(directory === 'root'){
-		var path = 'public/Images/'+email ; 
-	}else{
-		var path = 'public/Images/'+email + '/' + directory 
-	}
-	
-	//File Folder
-	var file = path +'/'+filename;
-	
-	console.log('Delete called ') ; 
-	
-	if(fs.statSync(file)) {
-		fs.lstat(file, function (err, stats){
-			 if(err) throw err ;  
-			    else{
-			    	 var collection = db.collection('user_files') ; 
-			    	 
-			    	 collection.find({ email : email  , is_deleted  : 0 , file_name :filename , directory : directory }).toArray(function(err , result){
-			    		 console.log('Delete called 2') ; 	
-			    		 if(err){
-								console.log(err);
-								res.status(500).json({})
-							} else{
-								console.log('Delete called 3') ; 
-								if(result[0]){
-									var deleteObj = {
-											email : result[0].email ,
-											file_name : result[0].file_name,
-											starred : result[0].starred,
-											is_directory : result[0].is_directory,
-											directory :  result[0].directory,
-											file_add_date : result[0].file_add_date ,
-											is_deleted : 1
-											}
-									
-									 collection.update({email : email  , is_deleted  : 0 , file_name :filename , directory : directory } ,
-											 deleteObj , function(err , response){
-										 	if(err){
-										 		console.log('Delete called 4') ; 
-										 		console.log(err)
-										 		res.status(500).json({})
-										 	}else{
-										 		console.log('Delete called 5') ; 
-										 		var pathOfUser = path;
-										 		if(fs.existsSync(pathOfUser)){
-										 			console.log('Delete called 6') ; 
-										 			 var collection2 = db.collection('user_shared_files') ; 
-										 			 collection2.remove({from_user : email , filename : filename , directory : directory } , function(err , result ){
-										 				console.log('Delete called 7') ; 
-										 				 if(err ){
-										 					 console.log(err);
-										 					 res.status(500).json({})
-										 				 }else{
-										 					console.log('Delete called 8') ; 
-										 					var collection3 = db.collection('groups') ; 
-										 					collection3.find({ filelist: {$elemMatch : { file_owner  : email , file_directory : directory , filename : filename }} } , function(err , result){
-										 						
 
-									 							console.log('Delete called 2') ;
-									 							collection3.updateMany({} , {$pull: {filelist : {file_owner  : email , file_directory : directory , filename : filename} }} , function(err , response){
-									 								console.log('Delete called 3') ;
-									 								if(err){
-									 									 console.log(err);
-													 					 res.status(500).json({})
-									 								}else{
-									 									if(stats.isDirectory()){
-																			console.log('TO delete is directory ')
-																    		fs.remove(file, function(err){
-																				  if (err) throw err;
-																				  else{}
-																			});
-																		}else{
-																			console.log('TO delete is File  ')
-																			fs.unlink(file, function(err){
-																				  if (err) throw err;
-																				  else{}
-																			});
-																		}
-									 									
-									 									collection.find({email : email , is_deleted : 0 , 
-										 						 			starred : 1 , directory : directory  }).toArray(function(err , result){
-										 						 				if(err){
-										 						 					console.log(err);
-										 						 					res.status(500).json({})
-										 						 				}else{
-										 						 					
-										 						 					collection.find({email : email , directory : directory , 
-										 						 						is_deleted : 0 }).toArray(function(err , result2){
-													 						 				if(err){
-													 						 					console.log(err);
-													 						 					res.status(500).json({})
-													 						 				}else{
-													 						 				 
-													 						 					collection.find({email : email  , 
-													 						 						is_deleted : 0 }).toArray(function(err , result3){
-																 						 				if(err){
-																 						 					console.log(err);
-																 						 					res.status(500).json({})
-																 						 				}else{
-																 						 					res.status(200).json({starred_data : result , filelist : result2 , recent_files : result3})
-																 						 				}
-																 						 			})
-													 						 					}
-													 						 			})
-										 						 				}
-										 						 			})
-									 								}
-									 							})
-									 						
-										 					})
-										 				 }
-										 			 })
-										 		}
-										 		
-										 	}
-									 })
-									
-								}
-							}
-						 })
-			    	 
-			    }
-		})
-	}
-	
-	
-});
+		var email = req.body.email ; 
+		var filename = req.body.filename ; 
+		var directory = req.body.directory ; 
+		
+		
+		 var apiObject = {"api" : "delete" ,
+				 email : email,
+				 filename : filename ,
+				 directory : directory
+				};
+		 
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			if(result.code = 200){
+				res.status(200).json({starred_data : result.starred_data , filelist : result.filelist , recent_files : result.recent_files})
+			}
+		 })
+	});
 
 
 	app.post('/shareFile', authenticate ,  function(req, res) {
@@ -715,102 +593,6 @@ module.exports = function(app , db , connection  ){
 	 
 	 
 	
-	app.post('/upload' ,  function(req, res) {
-		var email = req.body.email ; 
-		var starred = 0 ; 
-		var is_directory = 0 ; 
-		var directoryToUpload = req.body.directory ; 
-		
-		var currentdate = new Date();
-		var datetime =  currentdate.getFullYear() + '-' + (currentdate.getMonth()+1) + '-' + currentdate.getDate() + " "+ 
-		currentdate.getHours() + ":" + currentdate.getMinutes() + ":" + currentdate.getSeconds();
-		
-		var is_deleted = 0 ; 
-		console.log('Palash') ; 
-		//File Folder
-		if(directoryToUpload === 'root'){
-			var path = 'public/Images/'+email;
-		}else{
-			var path = 'public/Images/'+email+'/' + directoryToUpload;
-		}
-		
-		var collection = db.collection('user_files') ; 
-		
-		if(req.files){
-			console.log('File found from client ') ; 
-			var file  = req.files.file ;
-			var filename  = file.name ; 
-			
-			collection.find({email : email , file_name : filename ,directory : directoryToUpload , is_deleted : 0 }).toArray(function(err , result){
-				if(result[0]){
-					console.log('File already present') ; 
-					if (!fs.existsSync(path)){
-						fs.mkdirSync(path, 0744); 
-					}
-					
-					if (fs.existsSync(path +'/'+filename)) {
-					    console.log('Found file');
-					    res.status(400).json({}) ; 
-					}else{
-						file.mv(path +'/'+filename , function(err){
-							if(err){
-								console.log(err);
-								res.status(400).json({}) ; 
-							} 
-							else{
-								res.status(400).json({}) ; 
-								}
-							})
-					
-					
-				}
-				}else{
-					console.log('Doesnt Exist ')
-					if (!fs.existsSync(path)){
-						fs.mkdirSync(path, 0744); 
-					}
-
-					file.mv(path +'/'+filename , function(err){
-						if(err)throw err ;
-						else{
-							
-							var insertObj = {
-								email : email ,
-								file_name : filename,
-								starred : starred,
-								is_directory : is_directory,
-								directory :  directoryToUpload,
-								file_add_date : datetime ,
-								is_deleted : is_deleted
-								}
-							
-							 collection.insertOne(insertObj , function(err , response ){
-								 if(err){
-									 console.log(err);
-									 res.status(500).json({})
-								 }else{
-									 if (fs.existsSync(path)) {
-										 //Need to write the code 
-										 
-										 collection.find({email : email , directory : directoryToUpload , is_deleted : 0 }).toArray(function(err , result){
-											 if(err){
-												 console.log(err);
-											 }else{
-												 collection.find({ email : email , is_deleted : 0 }).toArray(function(err, result2){
-													 res.status(200).json({filelist : result , recent_files : result2})
-												 })
-											 }
-										 })
-										 
-									 }
-								 }
-							 })
-						}
-					})
-				}
-			})
-		}
-	});
 	
 	
 	 
@@ -831,8 +613,6 @@ module.exports = function(app , db , connection  ){
 		        }
 		        
 		    })(req, res)
-			
-			
 	});
 		
 	
@@ -934,32 +714,41 @@ module.exports = function(app , db , connection  ){
 	 
 	 
 	 
-	 app.get('/downloadFile',  function(req, res) {
+	 app.get('/downloadFile' ,authenticate ,   function(req, res) {
 		 var email =  req.query.email;
+		 
 		 var file =  req.query.file;
 		 var directory =  req.query.directory;
 		 var fileowner =  req.query.fileowner;
 		 
+		 console.log(fileowner , file , directory ) ; 
+		
 		 if(email === fileowner ){
-			 var path = 'public/Images/'+email;
+			 email = email ;
 		 }
 		 else if(email != fileowner && fileowner != undefined )
 		 {
-			 var path = 'public/Images/'+fileowner;
+			email =  fileowner
 		 }
 		 else{
-			 var path = 'public/Images/'+email;
+			email =  email 
 		 }
 		 
-		 if(directory === 'root'){
-			 path = path + '/' ; 
-		 }else{
-			 path = path + '/' + directory + '/' ; 
-		 }
+		 console.log(email );
+		 console.log(fileowner);
 		 
-		 var file = path + file;
-		 res.download(file);
-	})
+		 var apiObject = {"api" : "downloadFile" ,
+				 email : email,
+				 file : file ,
+				 directory : directory
+			};
+		 
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+			if(!err){
+				 res.end(new Buffer(result.data.data));
+			}
+		})
+	 })
 	
 		
 };
