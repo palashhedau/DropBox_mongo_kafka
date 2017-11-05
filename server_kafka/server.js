@@ -11,16 +11,16 @@ var producer = connection.getProducer();
 
 
 
-
+console.log('Hi');
 
 var mongoURL =        "mongodb://localhost:27017/DropBox_application";
 var mongo = require("./services/mongo");
-
+var pool = require("./services/connectionPool");
 
 
   
 
-
+var chunk_requests = {};
 
 
 
@@ -31,11 +31,11 @@ consumer.on('message', function (message) {
     var apiToCall  = data.data.api ; 
     console.log("API " , apiToCall) ; 
     
-    mongo.connect(mongoURL, function(db){
+    pool.getConnection(mongoURL, function(db , dbId){
 
         if(apiToCall === 'login'){
             
-               login.handle_request(data.data, db ,  function(err,res){
+               login.handle_request(data.data, db , dbId ,   function(err,res){
                        
                         var payloads = [
                             { topic: data.replyTo,
@@ -47,7 +47,7 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
@@ -55,7 +55,7 @@ consumer.on('message', function (message) {
             
 
         }else if(apiToCall === 'createGroup'){
-                groups.createGroup(data.data, db ,  function(err,res){
+                groups.createGroup(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -66,13 +66,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'getAllGroups'){
-                groups.getAllGroups(data.data, db ,  function(err,res){
+                groups.getAllGroups(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -83,13 +83,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'addMemberToGroup'){
-                groups.addMemberToGroup(data.data, db ,  function(err,res){
+                groups.addMemberToGroup(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -100,14 +100,14 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }
         else if(apiToCall === 'getMembersOfGroup'){
-                groups.getMembersOfGroup(data.data, db ,  function(err,res){
+                groups.getMembersOfGroup(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -118,13 +118,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'deleteMembersOfGroup'){
-                groups.deleteMembersOfGroup(data.data, db ,  function(err,res){
+                groups.deleteMembersOfGroup(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -135,13 +135,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'deleteGroup'){
-                groups.deleteGroup(data.data, db ,  function(err,res){
+                groups.deleteGroup(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -152,13 +152,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'getAllUsers'){
-                users.getAllUsers(data.data, db ,  function(err,res){
+                users.getAllUsers(data.data, db , dbId ,   function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -169,13 +169,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'submitProfile'){
-                users.submitProfile(data.data, db ,  function(err,res){
+                users.submitProfile(data.data, db ,dbId ,   function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -186,13 +186,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'readallfiles'){
-                files.readallfiles(data.data, db ,  function(err,res){
+                files.readallfiles(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -203,13 +203,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'createFolder'){
-                files.createFolder(data.data, db ,  function(err,res){
+                files.createFolder(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -220,13 +220,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'unStarfile'){
-                files.unStarfile(data.data, db ,  function(err,res){
+                files.unStarfile(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -237,13 +237,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'starFile'){
-                files.starFile(data.data, db ,  function(err,res){
+                files.starFile(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -254,13 +254,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'readallStarredfiles'){
-                files.readallStarredfiles(data.data, db ,  function(err,res){
+                files.readallStarredfiles(data.data, db , dbId ,   function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -271,13 +271,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'readRecentfiles'){
-                files.readRecentfiles(data.data, db ,  function(err,res){
+                files.readRecentfiles(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -288,13 +288,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'getGroupName'){
-                groups.getGroupName(data.data, db ,  function(err,res){
+                groups.getGroupName(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -305,13 +305,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'shareFile'){
-                files.shareFile(data.data, db ,  function(err,res){
+                files.shareFile(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -322,13 +322,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'getAllSharedFile'){
-                files.getAllSharedFile(data.data, db ,  function(err,res){
+                files.getAllSharedFile(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -339,13 +339,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'readFolderForIndividuals'){
-                files.readFolderForIndividuals(data.data, db ,  function(err,res){
+                files.readFolderForIndividuals(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -356,13 +356,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'shareFileWithGroup'){
-                groups.shareFileWithGroup(data.data, db ,  function(err,res){
+                groups.shareFileWithGroup(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -373,13 +373,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'getAllSharedGroupComponents'){
-                groups.getAllSharedGroupComponents(data.data, db ,  function(err,res){
+                groups.getAllSharedGroupComponents(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -390,13 +390,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'readFolderForGroups'){
-                groups.readFolderForGroups(data.data, db ,  function(err,res){
+                groups.readFolderForGroups(data.data, db , dbId ,  function(err,res){
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
@@ -407,13 +407,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'getFilesHistory'){
-                files.getFilesHistory(data.data, db ,  function(err,res){
+                files.getFilesHistory(data.data, db , dbId ,  function(err,res){
                     console.log('History ' , res.profile)
                         var payloads = [
                             { topic: data.replyTo,
@@ -425,49 +425,106 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'downloadFile'){
-                files.downloadFile(data.data, db ,  function(err,res){
-                   // console.log('History ' , res.data)
+                files.downloadFile(data.data, db , dbId ,  function(err,res ){
+
+
+                     for(var i=0;i< res.chunks.length;i++){
+
                         var payloads = [
                             { topic: data.replyTo,
                                 messages:JSON.stringify({
                                     correlationId:data.correlationId,
-                                    data : res
+                                    data : res.code,
+                                    chunk:res.chunks[i],
+                                    total_chunks:res.chunks.length,
+                                    chunk_no:i,
+                                    is_chunk_data:true,
                                 }),
                                 partition : 0
                             }
                         ];
+
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            if(err){
+                                console.log(err)
+                            }else{
+                                console.log("Data sent successfully");
+                            }
+
                         });
-                        
-                        return;
+
+                     }
+
+                     return;
+
                 })
         }else if(apiToCall === 'upload'){
-                files.upload(data.data, db ,  function(err,res){
-                   // console.log('History ' , res.data)
-                        var payloads = [
-                            { topic: data.replyTo,
-                                messages:JSON.stringify({
-                                    correlationId:data.correlationId,
-                                    data : res
-                                }),
-                                partition : 0
-                            }
-                        ];
-                        producer.send(payloads, function(err, data){
-                            console.log(data);
-                        });
-                        
-                        return;
-                })
+                
+            if(data.is_chunk_data){
+                 var chunk_request = chunk_requests[data.correlationId];
+                 if(chunk_request){
+                    chunk_request.chunks.push({
+                        data:data.chunk,
+                        order:data.chunk_no  
+                    })
+                }else{
+                     chunk_request = {
+                                        chunks:[
+                                            {
+                                                data:data.chunk,
+                                                order:data.chunk_no
+                                            }
+                                        ],
+                                        total_chunks:data.total_chunks
+                                    }
+                    chunk_requests[data.correlationId] = chunk_request;
+                }
+
+                 if(chunk_request.chunks.length === chunk_request.total_chunks){
+                    chunk_request.chunks.sort(function(a,b) {return (a.order > b.order) ? 1 : ((b.order > a.order) ? -1 : 0);});
+                    var combined_chunks_data = "";
+                    for (var i=0;i<chunk_request.chunks.length;i++) {
+                        combined_chunks_data += chunk_request.chunks[i].data;
+                    }
+                    data.data.buffer = Buffer.from(combined_chunks_data,'base64');
+
+                     
+
+
+                     files.upload(data.data, db , dbId ,  function(err,res){
+                       // console.log('History ' , res.data)
+                            var payloads = [
+                                { topic: data.replyTo,
+                                    messages:JSON.stringify({
+                                        correlationId:data.correlationId,
+                                        data : res
+                                    }),
+                                    partition : 0
+                                }
+                            ];
+                            producer.send(payloads, function(err, data){
+                                //console.log(data);
+                            });
+                            
+                            return;
+                    })
+
+
+                 }
+
+
+            }
+
+
+            
         }else if(apiToCall === 'delete'){
-                files.deleteFile(data.data, db ,  function(err,res){
+                files.deleteFile(data.data, db , dbId ,  function(err,res){
                    // console.log('History ' , res.data)
                         var payloads = [
                             { topic: data.replyTo,
@@ -479,13 +536,13 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'registration'){
-                login.registration(data.data, db ,  function(err,res){
+                login.registration(data.data, db , dbId ,   function(err,res){
                    // console.log('History ' , res.data)
                         var payloads = [
                             { topic: data.replyTo,
@@ -497,13 +554,14 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }else if(apiToCall === 'checkIfAlreadyLoggedIn'){
-                users.checkIfAlreadyLoggedIn(data.data, db ,  function(err,res){
+                console.log("DB ID " , dbId)
+                users.checkIfAlreadyLoggedIn(data.data, db , dbId ,  function(err,res){
                    // console.log('History ' , res.data)
                         var payloads = [
                             { topic: data.replyTo,
@@ -515,32 +573,15 @@ consumer.on('message', function (message) {
                             }
                         ];
                         producer.send(payloads, function(err, data){
-                            console.log(data);
+                            //console.log(data);
                         });
                         
                         return;
                 })
         }
         
-
-
-    
-
-
-
-
-
-
-
-
     })
 
-        
-
-        
-  
-
-   
 });
 
 

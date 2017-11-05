@@ -21,7 +21,7 @@ var ObjectID = require('mongodb').ObjectID
 var kafka = require('../middleware/kafka/client');
 
 var FileReader = require('filereader');
-
+const splitFile = require('split-file');
 
 //Mongoose 
 var mongoose = require('mongoose');
@@ -33,6 +33,8 @@ let gfs ;
 //Buffer 
 var JSONB = require('json-buffer')
 var Buffer2 = require('buffer').Buffer
+
+var CHUNK_SIZE = 100 * 1024;
 
 
 module.exports = function(app , db , connection  ){
@@ -68,19 +70,24 @@ module.exports = function(app , db , connection  ){
 		
 		var is_deleted = 0 ; 
 		
-		console.log(req.files.file.data)
+		var file = req.files.file ;
+		var fileBuffer = new Buffer(file.data).toString('base64') ;
 		
-		 var apiObject = {"api" : "upload" ,
+		var chunks = SplitFileIntoArray(fileBuffer) ;
+		
+		
+		var apiObject = {"api" : "upload" ,
 				 email : email,
 				 starred : starred ,
 				 is_directory : is_directory,
 				 directoryToUpload : directoryToUpload ,
 				 datetime : datetime ,
 				 is_deleted : is_deleted , 
-				 file : req.files.file
+				 filename : req.files.file.name,
+				 mimetype : req.files.file.mimetype
 				}
  
-		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+		 kafka.makeChunkedRequest('dropbox_app',apiObject , chunks , function(err,result){
 			if(result.code === 200){
 				res.status(result.code).json({filelist : result.filelist , recent_files : result.recent_files})
 			}else{
@@ -745,7 +752,7 @@ module.exports = function(app , db , connection  ){
 		 
 		 kafka.make_request('dropbox_app',apiObject , function(err,result){
 			if(!err){
-				 res.end(new Buffer(result.data.data));
+				 res.end(new Buffer(result));
 			}
 		})
 	 })
@@ -768,3 +775,17 @@ passport.deserializeUser(function(user_id, done) {
 	  
 });
 
+
+function SplitFileIntoArray(fileString){
+    var parts = [];
+    while(fileString !== ''){
+        if(fileString.length > CHUNK_SIZE){
+        	parts.push(fileString.slice(0, CHUNK_SIZE));
+        	fileString = fileString.slice(CHUNK_SIZE);
+        } else {
+        	parts.push(fileString);
+            break;
+        }
+    }
+    return parts;
+}

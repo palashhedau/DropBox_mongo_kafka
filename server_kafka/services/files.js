@@ -5,8 +5,12 @@ Grid.mongo = mongoose.mongo ;
 let gfs ; 
 var FileReader = require('filereader');
 
+var  pool = require("./connectionPool");
 
-function readallfiles(msg, db ,  callback){
+
+var CHUNK_SIZE = 100 * 1024;
+
+function readallfiles(msg, db , dbId ,  callback){
 
     var res = {};
 
@@ -17,6 +21,7 @@ function readallfiles(msg, db ,  callback){
     var collection = db.collection('user_files') ;  
          
     collection.find({email : email , directory : directory , is_deleted : 0 }).toArray(function(err, result){
+            pool.releaseConnection(dbId);
              if(err){
                  console.log(err)
              }else{
@@ -29,7 +34,7 @@ function readallfiles(msg, db ,  callback){
 }
 
 
-function createFolder(msg, db ,  callback){
+function createFolder(msg, db , dbId ,  callback){
 
     var res = {};
     var email = msg.email ; 
@@ -56,6 +61,7 @@ function createFolder(msg, db ,  callback){
       
       collection.insertOne(folderInsertObject , function(err , result){
                  if(err){
+                    pool.releaseConnection(dbId);
                     res.code = 500 ;
                     res.recent_files = null ;
                     res.filelist = null ; 
@@ -63,10 +69,12 @@ function createFolder(msg, db ,  callback){
                  }else{
                      collection.find({email : email , directory : directory , is_deleted : 0 }).toArray(function(err , result){
                          if(err){
+                             pool.releaseConnection(dbId);
                              console.log(err);
                          }else{
                              collection.find({ email : email , is_deleted : 0 }).sort({file_add_date : -1}).limit(5).toArray(function(err, result2){
-                                 
+                                
+                                pool.releaseConnection(dbId);
                                 res.code = 200 ;
                                 res.recent_files = result2 ;
                                 res.filelist = result ; 
@@ -83,7 +91,7 @@ function createFolder(msg, db ,  callback){
 
 
 
-function unStarfile(msg, db ,  callback){
+function unStarfile(msg, db , dbId ,  callback){
 
     var res = {
         code : 500,
@@ -100,7 +108,8 @@ function unStarfile(msg, db ,  callback){
     collection.find({ email : email , file_name : file_name  , 
                          directory : directory , is_deleted : 0 }).toArray(function(err , result){
                             if(err){
-                                 console.log(err);
+                                pool.releaseConnection(dbId);
+                              console.log(err);
                               callback(null , res) ; 
                              }else{
                                  var starred = 0 ;
@@ -119,6 +128,7 @@ function unStarfile(msg, db ,  callback){
                                     updateObj , function(err , response){
                                 
                                 if(err){
+                                    pool.releaseConnection(dbId);
                                     console.log(err);
                                 }else{
                                     
@@ -126,6 +136,7 @@ function unStarfile(msg, db ,  callback){
                                         starred : 1 }).toArray(function(err , result){
                                             if(err){
                                                 console.log(err);
+                                                pool.releaseConnection(dbId);
                                                 callback(null , res) ; 
                                             }else{
                                                 
@@ -133,6 +144,7 @@ function unStarfile(msg, db ,  callback){
                                                     is_deleted : 0 }).toArray(function(err , result2){
                                                         if(err){
                                                             console.log(err);
+                                                            pool.releaseConnection(dbId);
                                                            callback(null , res) ; 
                                                         }else{
                                                          
@@ -140,6 +152,7 @@ function unStarfile(msg, db ,  callback){
                                                                 is_deleted : 0 }).sort({file_add_date : -1}).limit(5).toArray(function(err , result3){
                                                                     if(err){
                                                                         console.log(err);
+                                                                        pool.releaseConnection(dbId);
                                                                         callback(null , res) ; 
                                                                     }else{
                                                                         res.code = 200;
@@ -163,7 +176,7 @@ function unStarfile(msg, db ,  callback){
 }
 
 
-function starFile(msg, db ,  callback){
+function starFile(msg, db , dbId ,  callback){
 
     var res = {
         code : 500,
@@ -181,6 +194,7 @@ function starFile(msg, db ,  callback){
                          directory : directory , is_deleted : 0 }).toArray(function(err , result){
                              if(err){
                                  console.log(err);
+                                 pool.releaseConnection(dbId);
                                 callback(null , res) ;
                              }else{
                                  
@@ -206,12 +220,14 @@ function starFile(msg, db ,  callback){
                                             updateObj , function(err , response){
                                         
                                         if(err){
+                                            pool.releaseConnection(dbId);
                                             console.log(err);
                                         }else{
                                             
                                             collection.find({email : email , is_deleted : 0 , 
                                                 starred : 1 }).toArray(function(err , result){
                                                     if(err){
+                                                        pool.releaseConnection(dbId);
                                                         console.log(err);
                                                         callback(null , res) ;
                                                     }else{
@@ -220,11 +236,13 @@ function starFile(msg, db ,  callback){
                                                             is_deleted : 0 }).toArray(function(err , result2){
                                                                 if(err){
                                                                     console.log(err);
+                                                                    pool.releaseConnection(dbId);
                                                                     callback(null , res) ;
                                                                 }else{
                                                                  
                                                                     collection.find({email : email  , 
                                                                         is_deleted : 0 } ).sort({file_add_date : -1}).limit(5).toArray(function(err , result3){
+                                                                            pool.releaseConnection(dbId);
                                                                             if(err){
                                                                                 console.log(err);
                                                                                 callback(null , res) ;
@@ -255,7 +273,7 @@ function starFile(msg, db ,  callback){
 
 
 
-function readallStarredfiles(msg, db ,  callback){
+function readallStarredfiles(msg, db ,dbId ,   callback){
 
     var res = {};
     var email = msg.email ; 
@@ -263,6 +281,7 @@ function readallStarredfiles(msg, db ,  callback){
     var collection = db.collection('user_files') ; 
              
     collection.find({starred : 1 , email : email  , is_deleted  : 0 }).toArray(function(err , result){
+                pool.releaseConnection(dbId);
                 if(err){
                     res.code = 500 ;
                     res.starred_data = null  ;
@@ -276,13 +295,14 @@ function readallStarredfiles(msg, db ,  callback){
 }
 
 
-function readRecentfiles(msg, db ,  callback){
+function readRecentfiles(msg, db , dbId , callback){
 
     var res = {};
     var email = msg.email ; 
     
     var collection = db.collection('user_files') ; 
     collection.find({ email : email  , is_deleted  : 0 }  ).sort({file_add_date : -1}).limit(5).toArray(function(err , result){
+                pool.releaseConnection(dbId);
                 if(err){
                     res.code = 500 ;
                     res.starred_data = null  ;
@@ -296,7 +316,7 @@ function readRecentfiles(msg, db ,  callback){
 }
 
 
-function shareFile(msg, db ,  callback){
+function shareFile(msg, db ,dbId ,   callback){
 
     var res = {};
     var file_name = msg.file_name ; 
@@ -312,12 +332,14 @@ function shareFile(msg, db ,  callback){
                         filename : file_name , directory : directory ,
                         is_directory : is_directory }).toArray(function(err , result){
              if(err){
+                pool.releaseConnection(dbId);
                  console.log(error);
                  res.code = 500 ; 
                  res.success = null ;
                  callback(null , res);
              }else{
                  if(result[0]){
+                    pool.releaseConnection(dbId);
                      res.code = 400 ; 
                      res.success = null ;
                      callback(null , res);
@@ -328,6 +350,7 @@ function shareFile(msg, db ,  callback){
                                 directory : directory,
                                 is_directory : is_directory}
                      collection.insert(shareObj , function(err , response){
+                        pool.releaseConnection(dbId);
                          if(err){
                              console.log(error);
                              res.code = 500 ; 
@@ -346,7 +369,7 @@ function shareFile(msg, db ,  callback){
 }
 
 
-function getAllSharedFile(msg, db ,  callback){
+function getAllSharedFile(msg, db ,dbId ,  callback){
 
     var res = {};
     var email = msg.email ; 
@@ -354,6 +377,7 @@ function getAllSharedFile(msg, db ,  callback){
     var collection = db.collection('user_shared_files') ; 
          
          collection.find({to_email : email }).toArray(function(err , result){
+             pool.releaseConnection(dbId);
              if(err){
                 res.code = 500 ;
                 res.filelist = null ; 
@@ -368,7 +392,7 @@ function getAllSharedFile(msg, db ,  callback){
 
 
 
-function readFolderForIndividuals(msg, db ,  callback){
+function readFolderForIndividuals(msg, db , dbId ,  callback){
 
     var res = {};
     var email = msg.email ; 
@@ -380,6 +404,7 @@ function readFolderForIndividuals(msg, db ,  callback){
     var collection = db.collection('user_files') ; 
          
          collection.find({email : folderowner , directory : foldername }).toArray(function(err , result){
+             pool.releaseConnection(dbId);
              if(err){
                 res.code = 200 ;
                 res.subGroupContent = null ;
@@ -393,7 +418,7 @@ function readFolderForIndividuals(msg, db ,  callback){
 
 }
 
-function getFilesHistory(msg, db ,  callback){
+function getFilesHistory(msg, db , dbId ,  callback){
 
     var res = {};
     var email = msg.email ; 
@@ -401,6 +426,7 @@ function getFilesHistory(msg, db ,  callback){
    var collection = db.collection('user_files') ;
          
          collection.find({is_deleted : 1 ,email : email  }).toArray(function(err , result){
+             pool.releaseConnection(dbId);
              if(err){
                  console.log(err);
                  res.code = 500 ; 
@@ -418,7 +444,7 @@ function getFilesHistory(msg, db ,  callback){
 
 
 
-function deleteFile(msg, db ,  callback){
+function deleteFile(msg, db , dbId ,  callback){
 
    var res = {};
    var email = msg.email ; 
@@ -432,6 +458,7 @@ function deleteFile(msg, db ,  callback){
          
          if(err){
                     console.log(err);
+                    pool.releaseConnection(dbId);
                    res.code = 500 ;
                    callback(null , res); 
                 } else{
@@ -547,6 +574,7 @@ function deleteFile(msg, db ,  callback){
                                                                                  
                                                                                     collection.find({email : email  , 
                                                                                         is_deleted : 0 }  ).sort({file_add_date : -1}).limit(5).toArray(function(err , result3){
+                                                                                           pool.releaseConnection(dbId);
                                                                                             if(err){
                                                                                                 console.log(err);
                                                                                                  res.code = 500 ;
@@ -583,7 +611,7 @@ function deleteFile(msg, db ,  callback){
 }
 
 
-function downloadFile(msg, db ,  callback){
+function downloadFile(msg, db , dbId ,  callback){
 
     console.log('Download file called ') ; 
     var res = {};
@@ -618,19 +646,22 @@ function downloadFile(msg, db ,  callback){
                      })
                      
                      readStream.on('end' , function(){
-                         
-                         data = Buffer.concat(data) ; 
-                        console.log(data) ; 
+                        pool.releaseConnection(dbId);
 
-                         res.code = 200 ; 
-                         res.data = data; 
-                         callback(null , res );
+                        data = Buffer.concat(data) ; 
+                        var fileBuffer = new Buffer(data).toString('base64') ;
+                        var chunks = SplitFileIntoArray(fileBuffer) ;
+                        
+                        res.code = 200 ; 
+                        res.chunks = chunks; 
+                        callback(null , res );
                          
                          
                      })
                      
                      
                  }else{
+                    pool.releaseConnection(dbId);
                      console.log("File not found");
                  }
 
@@ -644,7 +675,24 @@ function downloadFile(msg, db ,  callback){
          })
 }
 
-function upload(msg, db ,  callback){
+
+
+function SplitFileIntoArray(fileString){
+    var parts = [];
+    while(fileString !== ''){
+        if(fileString.length > CHUNK_SIZE){
+            parts.push(fileString.slice(0, CHUNK_SIZE));
+            fileString = fileString.slice(CHUNK_SIZE);
+        } else {
+            parts.push(fileString);
+            break;
+        }
+    }
+    return parts;
+}
+
+
+function upload(msg, db , dbId ,  callback){
 
     console.log('Upload file called ') ; 
     var res = {};
@@ -660,10 +708,11 @@ function upload(msg, db ,  callback){
     var is_deleted = msg.is_deleted ; 
 
 
-    var file =  msg.file;
-    var filename  = file.name ; 
-    var fileData = new Buffer(file.data.data)
+    var fileData =  new Buffer(msg.buffer);
+    var filename  = msg.filename; 
+    //var fileData = new Buffer(file.data.data)
   
+   
    
     var fileReader = new FileReader();
 
@@ -690,9 +739,9 @@ function upload(msg, db ,  callback){
             //File upload in DB
              //File upload in DB
                                 let writeStream = gfs.createWriteStream({
-                                    filename:  file.name,
+                                    filename:  filename,
                                     mode: 'w',
-                                    content_type: file.mimetype ,
+                                    content_type:  msg.mimetype ,
                                     metadata: {
                                        email : email,
                                        directory :  directoryToUpload,
@@ -716,15 +765,17 @@ function upload(msg, db ,  callback){
                                   collection.insertOne(insertObj , function(err , response ){
                                      if(err){
                                          res.code = 500 ;
+                                         pool.releaseConnection(dbId);
                                          callback(null , res);
                                      }else{
                                         
                                         collection.find({email : email , directory : directoryToUpload , is_deleted : 0 }).toArray(function(err , result){
                                              if(err){
                                                  console.log(err);
+                                                 pool.releaseConnection(dbId);
                                              }else{
                                                  collection.find({ email : email , is_deleted : 0 }).sort({file_add_date : -1}).limit(5).toArray(function(err, result2){
-                                                     
+                                                     pool.releaseConnection(dbId);
                                                     res.code = 200 ;
                                                     res.filelist = result ;
                                                     res.recent_files = result2 ; 

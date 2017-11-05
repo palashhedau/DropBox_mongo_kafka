@@ -1,6 +1,8 @@
-var ObjectID = require('mongodb').ObjectID
+var ObjectID = require('mongodb').ObjectID;
+var  pool = require("./connectionPool");
 
-function getAllUsers(msg, db ,  callback){
+
+function getAllUsers(msg, db , dbId ,  callback){
 
     var res = {};
     
@@ -10,6 +12,7 @@ function getAllUsers(msg, db ,  callback){
         
 
          collection.find({"email" : {$ne : email }} , {"email" : 1 }).toArray(function(err , result){
+            pool.releaseConnection(dbId);
              if(err){
                  console.log(err);
                  res.code = 500 ;
@@ -26,7 +29,7 @@ function getAllUsers(msg, db ,  callback){
 }
 
 
-function submitProfile(msg, db ,  callback){
+function submitProfile(msg, db , dbId ,  callback){
 
     var res = {};
     
@@ -54,6 +57,7 @@ function submitProfile(msg, db ,  callback){
                              lifeevents : lifeevents 
                      }
                      collection.insertOne(obj , function(err , response){
+                        pool.releaseConnection(dbId);
                          if(err){
                              res.code = 500; 
                              callback(null , res) ;
@@ -71,7 +75,7 @@ function submitProfile(msg, db ,  callback){
 }
 
 
-function getProfile(msg, db ,  callback){
+function getProfile(msg, db , dbId ,   callback){
 
     var res = {};
     
@@ -79,6 +83,7 @@ function getProfile(msg, db ,  callback){
     var collection = db.collection('profile') ; 
          
          collection.find({email : email }).toArray(function(err , result){
+            pool.releaseConnection(dbId);
              console.log("Result " , result [0]) ; 
              if(result[0]){
                  res.code = 200;
@@ -95,7 +100,7 @@ function getProfile(msg, db ,  callback){
 
 
 
-function checkIfAlreadyLoggedIn(msg, db ,  callback){
+function checkIfAlreadyLoggedIn(msg, db , dbId ,  callback){
 
     var res = {};
     
@@ -106,7 +111,10 @@ function checkIfAlreadyLoggedIn(msg, db ,  callback){
     var collection = db.collection('users');
          
          collection.find({_id : user}).toArray(function(err , result){
-             console.log(result[0]); 
+             
+             pool.releaseConnection(dbId);
+
+
              if(result[0]){
                  user  =  { email : result[0].email ,
                         fname : result[0].fname ,

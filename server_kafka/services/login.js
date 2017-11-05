@@ -1,8 +1,8 @@
 var bcrypt = require('bcrypt') ; 
 var auth = require('passport-local-authenticate');
+var  pool = require("./connectionPool");
 
-
-function handle_request(msg, db ,  callback){
+function handle_request(msg, db , dbId ,  callback){
 
     var res = {};
     
@@ -10,7 +10,7 @@ function handle_request(msg, db ,  callback){
     
     console.log(msg.email) ; 
                 collection.find({email : msg.email} , {email : 1 , fname : 1 , lname : 1 , gender : 1 , password : 1 , dob : 1  } ).toArray(function(err , result){
-                    
+                    pool.releaseConnection(dbId); 
                     if(result[0]){
                         console.log('User found ')
                         auth.verify(msg.password, result[0].password, function(err, verified) {
@@ -23,7 +23,7 @@ function handle_request(msg, db ,  callback){
 
                                  res.code = "200";
                                  res.user = user ; 
-                                 console.log("After authenticate " , res ) ; 
+                                 
                                  callback(null , res);
                                }else{
                                     res.code = "401";
@@ -43,7 +43,7 @@ function handle_request(msg, db ,  callback){
 
 
 
-function registration(msg, db ,  callback){
+function registration(msg, db , dbId ,  callback){
 
     var res = {};
     
@@ -59,10 +59,12 @@ function registration(msg, db ,  callback){
         
         collection.find({email : email}).toArray(function(err , result){
             if(err){
-                console.log(err)
+                console.log(err);
+                pool.releaseConnection(dbId);
             }else{
                 if(result[0]){
                     console.log('User already present ' , result[0]); 
+                    pool.releaseConnection(dbId);
                     res.code = 200 ; 
                     res.success  = false ; 
                     res.error = 'User already present'
@@ -84,6 +86,7 @@ function registration(msg, db ,  callback){
                                 gender : gender } ; 
                         
                         collection.insertOne(obj , function(err , response){
+                            pool.releaseConnection(dbId);
                             if(err){
                                 console.log(err);
                                 res.code = 500 ; 

@@ -1,7 +1,7 @@
-
+var  pool = require("./connectionPool");
 var ObjectID = require('mongodb').ObjectID
 
-function createGroup(msg, db ,  callback){
+function createGroup(msg, db , dbId ,   callback){
 
          var res = {};
 
@@ -13,6 +13,7 @@ function createGroup(msg, db ,  callback){
          var collection = db.collection('groups');
          collection.find({groupowner : email , groupname : groupname }).toArray(function(err , result){
              if(result[0]){
+                pool.releaseConnection(dbId);
                  console.log('Group exist ')
              }else{
                 
@@ -25,11 +26,13 @@ function createGroup(msg, db ,  callback){
                  
                  collection.insertOne(obj , function(err , response){
                      if(err){
+                        pool.releaseConnection(dbId);
                          console.log(err) ;
                      }else{
                         // Fetching the groups for the users 
                          var collection = db.collection('groups');
                          collection.find({members : {$elemMatch : { email : email } }}).toArray(function(err , response){
+                             pool.releaseConnection(dbId);
                              if(err){
                                   res.code = 200 ;
                                   res.grouplist = null ; 
@@ -50,13 +53,17 @@ function createGroup(msg, db ,  callback){
          })
 }
 
-function getAllGroups(msg, db ,  callback){
+
+
+
+function getAllGroups(msg, db , dbId ,  callback){
     var res = {};
 
     var email = msg.email ;
 
      var collection = db.collection('groups');
          collection.find({members : {$elemMatch : { email : email } }}).toArray(function(err , response){
+             pool.releaseConnection(dbId);
              if(err){
                 res.code = 200 ;
                 res.grouplist = null ; 
@@ -71,7 +78,7 @@ function getAllGroups(msg, db ,  callback){
 
 }
 
-function addMemberToGroup(msg, db ,  callback){
+function addMemberToGroup(msg, db , dbId ,   callback){
     var res = {};
 
     var email = msg.email ;
@@ -86,6 +93,7 @@ function addMemberToGroup(msg, db ,  callback){
          collection.find({_id : group_id , members: {$elemMatch : { email : emailToAdd }} }).toArray(function(err , response){
              if(response[0]){
                  res.code = 401 ;
+                 pool.releaseConnection(dbId);
                  callback(null , res ) ;
              }else{
                  console.log('User not present , need to add ') ; 
@@ -94,6 +102,7 @@ function addMemberToGroup(msg, db ,  callback){
                  } ;
                  
                  collection.update({_id : group_id} , {$addToSet: {members : emailToAddObj }} , function(err , response ){
+                     pool.releaseConnection(dbId);
                      if(err){
                          console.log(err)
                      }else{
@@ -108,7 +117,7 @@ function addMemberToGroup(msg, db ,  callback){
 }
 
 
-function getMembersOfGroup(msg, db ,  callback){
+function getMembersOfGroup(msg, db , dbId,  callback){
     var res = {};
 
     var email = msg.email ;
@@ -120,6 +129,7 @@ function getMembersOfGroup(msg, db ,  callback){
     var collection = db.collection('groups');
          
          collection.find({_id : group_id } , {members : 1 }).toArray(function(err , response ){
+            pool.releaseConnection(dbId);
             if(err){
                 res.code = 500 ;
                 res.groupMemberList  =  null ;
@@ -138,7 +148,7 @@ function getMembersOfGroup(msg, db ,  callback){
 }
 
 
-function deleteMembersOfGroup(msg, db ,  callback){
+function deleteMembersOfGroup(msg, db , dbId ,  callback){
     var res = {};
 
     var email = msg.email ;
@@ -153,6 +163,7 @@ function deleteMembersOfGroup(msg, db ,  callback){
          
     collection.find({_id : group_id , members: {$elemMatch : { email : membertodelete }}  }).toArray(function(err , response ){
                 if(err){
+                    pool.releaseConnection(dbId);
                     console.log(error);
                    res.code = 500 ;
                    res.groupMemberList = null ;
@@ -166,11 +177,13 @@ function deleteMembersOfGroup(msg, db ,  callback){
                              } ;
                         collection.update({_id : group_id} , {$pull: {members : emailToAddObj }} , function(err , response){
                             if(err){
-                                console.log(error)
+                                console.log(error) ;
+                                pool.releaseConnection(dbId);
                             }else{
                                 console.log('Deleted fuccessfully ') ; 
                                  
                                  collection.find({_id : group_id } , {members : 1 }).toArray(function(err , response ){
+                                    pool.releaseConnection(dbId);
                                     if(err){
                                         console.log(error);
                                         res.code = 500 ;
@@ -195,7 +208,7 @@ function deleteMembersOfGroup(msg, db ,  callback){
 }
 
 
-function deleteGroup(msg, db ,  callback){
+function deleteGroup(msg, db , dbId ,  callback){
     var res = {};
 
     var email = msg.email ;
@@ -206,10 +219,12 @@ function deleteGroup(msg, db ,  callback){
          
     collection.remove({_id : group_id } , function(err , response ){
              if(err){
-                 console.log(err)
+                 console.log(err);
+                 pool.releaseConnection(dbId);
              }else{
                  var collection = db.collection('groups');
                  collection.find({members : {$elemMatch : { email : email } }}).toArray(function(err , response){
+                     pool.releaseConnection(dbId);
                      if(err){
                          res.code = 200 ;
                          res.grouplist = null ; 
@@ -226,7 +241,7 @@ function deleteGroup(msg, db ,  callback){
 }
 
 
-function getGroupName(msg, db ,  callback){
+function getGroupName(msg, db , dbId ,  callback){
     var res = {};
 
     var email = msg.email ;
@@ -236,6 +251,7 @@ function getGroupName(msg, db ,  callback){
    var collection = db.collection('groups') ; 
          
          collection.find({_id : group_id } ,  {group_name : 1 }).toArray(function(err, result){
+                pool.releaseConnection(dbId);
              if(err){
                  console.log(err);
                  res.code = 500 ; 
@@ -252,7 +268,7 @@ function getGroupName(msg, db ,  callback){
 }
 
 
-function shareFileWithGroup(msg, db ,  callback){
+function shareFileWithGroup(msg, db , dbId ,   callback){
     var res = {};
 
     var file_owner = msg.file_owner ;
@@ -271,6 +287,7 @@ function shareFileWithGroup(msg, db ,  callback){
              filelist: {$elemMatch : { group_name : groupname ,file_owner :file_owner ,filename: filename ,
                  file_directory : directory , group_owner : groupowner , is_directory : is_directory }} }).toArray(function(err , response){
              if(response[0]){
+                pool.releaseConnection(dbId);
                  res.code = 401;
                  res.groupFileList = null ;
                  callback(null , res);
@@ -287,10 +304,12 @@ function shareFileWithGroup(msg, db ,  callback){
                  
                  collection.update({groupowner : groupowner , group_name : groupname} , {$addToSet: {filelist : shareFileAdd }} , function(err , response ){
                      if(err){
-                         console.log(err)
+                         console.log(err);
+                         pool.releaseConnection(dbId);
                      }else{
                         
                          collection.find({groupowner : groupowner , group_name : groupname}).toArray(function(err , result){
+                             pool.releaseConnection(dbId); 
                              if(err ){
                                     console.log('Error while fetching data ' , err);
                                     res.code = 500;
@@ -312,7 +331,7 @@ function shareFileWithGroup(msg, db ,  callback){
 }
 
 
-function getAllSharedGroupComponents(msg, db ,  callback){
+function getAllSharedGroupComponents(msg, db , dbId ,  callback){
     var res = {};
 
     var email = msg.email ;
@@ -322,7 +341,9 @@ function getAllSharedGroupComponents(msg, db ,  callback){
    var collection = db.collection('groups');
          
          collection.find({_id : group_id } , {filelist : 1 }).toArray(function(err , response ){
+            pool.releaseConnection(dbId);
             if(err){
+
                 res.code = 500;
                 res.filelist = null ; 
                 callback(null , res);
@@ -349,7 +370,7 @@ function getAllSharedGroupComponents(msg, db ,  callback){
 
 
 
-function readFolderForGroups(msg, db ,  callback){
+function readFolderForGroups(msg, db , dbId ,  callback){
     var res = {};
 
     var email = msg.email ;
@@ -360,6 +381,7 @@ function readFolderForGroups(msg, db ,  callback){
     var collection = db.collection('user_files') ; 
          
          collection.find({email : folderowner , directory : foldername }).toArray(function(err , result){
+            pool.releaseConnection(dbId);
              if(err){
                  res.code = 200;
                  res.subGroupContent = null ;
