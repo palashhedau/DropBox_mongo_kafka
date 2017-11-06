@@ -12,7 +12,7 @@ function getAllUsers(msg, db , dbId ,  callback){
         
 
          collection.find({"email" : {$ne : email }} , {"email" : 1 }).toArray(function(err , result){
-            pool.releaseConnection(dbId);
+            pool.releaseConnection(db , dbId);
              if(err){
                  console.log(err);
                  res.code = 500 ;
@@ -57,7 +57,7 @@ function submitProfile(msg, db , dbId ,  callback){
                              lifeevents : lifeevents 
                      }
                      collection.insertOne(obj , function(err , response){
-                        pool.releaseConnection(dbId);
+                        pool.releaseConnection(db , dbId);
                          if(err){
                              res.code = 500; 
                              callback(null , res) ;
@@ -83,7 +83,7 @@ function getProfile(msg, db , dbId ,   callback){
     var collection = db.collection('profile') ; 
          
          collection.find({email : email }).toArray(function(err , result){
-            pool.releaseConnection(dbId);
+            pool.releaseConnection(db , dbId);
              console.log("Result " , result [0]) ; 
              if(result[0]){
                  res.code = 200;
@@ -112,7 +112,7 @@ function checkIfAlreadyLoggedIn(msg, db , dbId ,  callback){
          
          collection.find({_id : user}).toArray(function(err , result){
              
-             pool.releaseConnection(dbId);
+             pool.releaseConnection(db , dbId);
 
 
              if(result[0]){

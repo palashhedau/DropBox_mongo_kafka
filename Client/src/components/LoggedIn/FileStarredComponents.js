@@ -3,7 +3,8 @@ import {viewFile} from '../../actions/viewFileAction'
 import { unStarItems} from '../../actions/StarredAction'
 import {connect} from 'react-redux'
 import { Link } from 'react-router-dom'
-
+import Modal from 'react-modal'
+import {shareFile , shareFileInGroup} from '../../actions/shareFileAction'
 
 class FileComponent extends Component{
 
@@ -12,7 +13,8 @@ class FileComponent extends Component{
 
 		this.state = {
 			url : '/home/' + (this.props.currentUrl === '' ? '' : this.props.currentUrl + '/' ) ,
-			
+			modalIsOpen: false,
+			modal2IsOpen : false 
 		}
 	}
 
@@ -23,16 +25,144 @@ class FileComponent extends Component{
 			borderBottom: "solid 2px #E6E8EB",
 			paddingTop:"15px"
 		}
+
+		const customStyles = {
+	      content : {
+	        top                   : '40%',
+	        left                  : '50%',
+	        right                 : '50%',
+	        bottom                : '40%',
+	        marginRight           : '-50%',
+	        transform             : 'translate(-50%, -50%)'
+	      }
+	    };
+
+		
+
+		const stylePadding = {
+			paddingTop : "30px"
+		}
 		
 		return (
 			
 			 <li  style={styleBottomBorder} className="list-group-item padd">
 			 		
+			 	<Modal
+                        isOpen={this.state.modalIsOpen}
+                        style= {customStyles}
+                        onRequestClose={this.closeModal}
+                        shouldCloseOnOverlayClick={false}
+                        contentLabel="Profile">
+
+                        <div>
+					 		<div>
+						 		<select onChange={(e) => {	this.setState({
+															 		shareToEmail : e.target.value,})
+														}} className="form-control" id="sel1"> 	
+												 	<option>---Select User---</option> 
+												 	{this.props.AllUsers.map((user , key) => {
+												  		return <option   key={key}>{user.email}</option>
+												  	})} 
+
+								</select>
+							</div>
+
+							<div style={stylePadding}>
+								
+								<button className="btn btn-danger btn-sm  pull-right" onClick={() => {
+									this.setState({
+										modalIsOpen : false
+									})
+								}}>Cancel</button>
+
+								<button className="btn btn-primary btn-sm pull-right" onClick={() => {
+										       		this.props.email === this.state.shareToEmail ? 
+										       		console.log('Cannot share with ourself') :
+										       		(
+										       			this.props.shareFile(this.props.file.file_name , this.props.file.directory,
+										       			this.props.email , this.state.shareToEmail , this.props.file.is_directory)
+										       		)
+										       		this.setState({
+														modalIsOpen : false
+													})
+										       	
+								 }}>Share</button>
+								
+								
+							</div>
+
+						</div>
+						   
+
+	                        
+                        
+                 </Modal>
+
+
+                 <Modal
+                        isOpen={this.state.modal2IsOpen}
+                        style= {customStyles}
+                        onRequestClose={this.closeModal}
+                        shouldCloseOnOverlayClick={false}
+                        contentLabel="Profile">
+
+                        <div>
+                        	<div>
+						 		<select onChange={(e) => {	this.setState({
+															 		shareToGroup : e.target.value,})
+														}} className="form-control" id="sel1">
+
+														<option>---Select Group---</option> 	
+												 	{this.props.groupList.map((group , key) => {
+												  		return <option   key={key}>{group.group_name} - {group.groupowner}</option>
+												  	})} 
+
+								</select>
+							</div>
+
+							<div>
+
+								<button className="btn btn-danger btn-sm pull-right" onClick={() => {
+									this.setState({
+										modal2IsOpen : false 
+									})
+								}}>Cancel</button>
+								<button className="btn btn-primary btn-sm pull-right" onClick={() => {
+									       		this.setState({
+									       			
+									       		})
+									       		this.props.shareFileInGroup(this.props.email , this.state.shareToGroup 
+									       			,this.props.file.file_name , this.props.file.directory , this.props.file.is_directory  )
+									       		this.setState({
+									       			modal2IsOpen : false 
+									       		})
+									       }}>Add</button>
+								
+							</div>
+
+						
+						</div>
+						   
+
+	                        
+                        
+                 </Modal>
+
+
 			 	
 			 	{
-			 		this.props.file.is_directory === '1' ? 
+			 		this.props.file.is_directory == '1' ? 
 			 			
-			 			<Link   to={this.state.url  + this.props.file.file_name} > 
+			 			<Link   to={
+
+			 				(
+			 					this.props.file.directory === 'root' ?  
+			 					this.state.url  +  this.props.file.file_name : 
+			 					this.state.url  + this.props.file.directory + '/' +  this.props.file.file_name 
+			 				) 
+
+
+			 				}  > 
 							<img src={require("../../fonts/folder.jpg")}  height="40" width="40"/>
 							{this.props.file.file_name}
 						</Link>
@@ -64,11 +194,24 @@ class FileComponent extends Component{
 			 							 src={require("../../fonts/expand.JPG")}  height="25" width="50"  />
 			 					
 			 					<ul className="dropdown-menu">
-						          <li className="list-group-item">Share</li>
+						           <li className="list-group-item"><a onClick={() => {
+						          	this.setState({
+										modalIsOpen : true
+									})
+						          }}>Share</a></li>
+						          <li className="list-group-item"><a onClick={() => {
+						          	this.setState({
+										modal2IsOpen : true
+									})
+						          }}>Share with Group</a></li>
 						        </ul>
 			 				</li>
 			 			</ul>
 					</span>
+
+
+
+
 
 			 		<span className="pull-right"><img onClick={() => {
 			 			var file =  this.props.file.file_name ;
@@ -86,7 +229,9 @@ class FileComponent extends Component{
 function mapDispatchToProps(dispatch){
 	return {
 		
-		unStarItems : (item1 , item2 , directory ) => dispatch(unStarItems(item1 , item2 , directory))
+		unStarItems : (item1 , item2 , directory ) => dispatch(unStarItems(item1 , item2 , directory)),
+		shareFile : (filename , directory , fromUser , toUser , id ) => dispatch(shareFile(filename , directory , fromUser , toUser , id)),
+		shareFileInGroup : (email , groupname , filename , directory , is_directory) => dispatch(shareFileInGroup(email , groupname , filename , directory, is_directory))
 	}
 }
 
@@ -99,6 +244,8 @@ function mapStateToProps(state) {
         listOfSTarredFiles : state.fileUploadReducer.listOfStarredFiles,
         directoryForServer : state.CurrentDirectoryReducer.directoryForServer,
         currentUrl : state.CurrentDirectoryReducer.directory,
+		AllUsers : state.HomeReducer.getAllUsers,
+        groupList : state.groupsReducer.getAllGroups
     };
 }
 

@@ -1,65 +1,85 @@
 var MongoClient = require('mongodb').MongoClient;
 var db;
 var connected = false;
-
-
-/**
- * Connects to the MongoDB Database with the provided URL
- */
+var sleep = require('system-sleep');
 
 var connectionArray = [] ; 
-  const poolsize = 1 ;
- // const MAX_IDLE_TIME = 10;
+const poolsize = 10  ;
 
-exports.getConnection = function(url , callback){
+var connId = 0 ; 
+
+exports.createConnectionPool = function(url , callback){
+
+  for (var i = 0 ; i < poolsize ; i++) {
+                      
+      MongoClient.connect(url, function(err, _db){
+            var connection = {} ; 
+
+            if(connectionArray[connId] === undefined){
+               console.log(connId , "New connection establishing") ;
+               connection.db = _db ;
+               connection.id = connId ; 
+               connectionArray.push(connection) 
+               connId ++ ; 
+
+             }  
+      }) 
   
-  var connection = {} ; 
+       callback(true) ; 
+  }
 
-  for (var i = 0 ; i < poolsize ; i++) 
-  { 
+}
 
-     
-      if(connectionArray[i] === undefined)
-      {
-           
-            MongoClient.connect(url, function(err, _db){
-            if (err) { throw new Error('Could not connect: '+err); }
-            db = _db;
-            connection.db = _db ;
-            connection.id = i ; 
+exports.getConnection = function( callback){
+  
+    var connectionFOund = false
 
-            connectionArray.push(connection) ; 
-           // console.log("Length " , connectionArray.length );
+    if(connectionArray.length > 0){
+      var conn = connectionArray.pop() ; 
+      connectionFOund = true ; 
+      callback(conn.db , conn.id)
+    }
 
-            callback(connection.db , connection.id ) ; 
-            
-          });
-           break ; 
-      }
+     if(!connectionFOund){
+        console.log("Asking for available connection") ;
+        var conn = setUpQueue(callback) ;
+        callback(conn.db , conn.id) 
+     }
+}
 
-      if(i === poolsize-1){
-        console.log("Waiting for connection") ; 
-      }
 
+setUpQueue = function(){
+  var  connectionFound = false ; 
+  var conn ;
+
+  while(connectionFound === false){
+    if(connectionArray.length > 0){
+      console.log("Found connection") ;
+      conn = connectionArray.pop() ; 
+      connectionFound = true ;
+    }
+
+    sleep(50);
+
+  }
+
+  
+  if(conn !== undefined){
+    return conn ; 
   }
 
 }
 
 
 
+exports.releaseConnection = function(db , id){
+  
+   var connection = {} ;
+   connection.db = db ;
+   connection.id = id ; 
+ 
+   connectionArray.push(connection) ; 
 
-exports.releaseConnection = function(id){
- // console.log("Connection to release " , id ) ; 
-  for(var i = 0 ; i < connectionArray.length ; i ++  ){
-    if(connectionArray[i].id === id ){
-    
-      connectionArray.splice( i , 1 );
-      break ; 
-    }
-  }
-  /*console.log("length of Connection Available " , connectionArray.length) ;
-  console.log(connectionArray) ;  
-  console.log('------------------------------------------') ; */
 }
 
 

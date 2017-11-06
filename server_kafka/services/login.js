@@ -10,7 +10,7 @@ function handle_request(msg, db , dbId ,  callback){
     
     console.log(msg.email) ; 
                 collection.find({email : msg.email} , {email : 1 , fname : 1 , lname : 1 , gender : 1 , password : 1 , dob : 1  } ).toArray(function(err , result){
-                    pool.releaseConnection(dbId); 
+                    pool.releaseConnection(db , dbId); 
                     if(result[0]){
                         console.log('User found ')
                         auth.verify(msg.password, result[0].password, function(err, verified) {
@@ -60,11 +60,11 @@ function registration(msg, db , dbId ,  callback){
         collection.find({email : email}).toArray(function(err , result){
             if(err){
                 console.log(err);
-                pool.releaseConnection(dbId);
+                pool.releaseConnection(db , dbId);
             }else{
                 if(result[0]){
                     console.log('User already present ' , result[0]); 
-                    pool.releaseConnection(dbId);
+                    pool.releaseConnection(db , dbId);
                     res.code = 200 ; 
                     res.success  = false ; 
                     res.error = 'User already present'
@@ -86,7 +86,7 @@ function registration(msg, db , dbId ,  callback){
                                 gender : gender } ; 
                         
                         collection.insertOne(obj , function(err , response){
-                            pool.releaseConnection(dbId);
+                            pool.releaseConnection(db , dbId);
                             if(err){
                                 console.log(err);
                                 res.code = 500 ; 
