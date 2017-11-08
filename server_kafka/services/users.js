@@ -100,6 +100,33 @@ function getProfile(msg, db , dbId ,   callback){
 
 
 
+function checkProfileExist(msg, db , dbId ,   callback){
+
+    var res = {};
+    
+    var email = msg.email ;
+    
+    var collection = db.collection('profile');
+         
+         collection.find({email : email }).toArray(function(err , result){
+             if(result[0]){
+                 res.code = 200 ;
+                 res.user = result[0] ;
+                 res.profileExist = true ; 
+                 callback(null , res) ;
+             }else{
+                res.code = 200 ;
+                 res.user = result[0] ;
+                 res.profileExist = false ; 
+                 callback(null , res) ;
+             }
+         })
+
+
+}
+
+
+
 function checkIfAlreadyLoggedIn(msg, db , dbId ,  callback){
 
     var res = {};
@@ -140,6 +167,7 @@ function checkIfAlreadyLoggedIn(msg, db , dbId ,  callback){
 
 
 
+exports.checkProfileExist = checkProfileExist;
 exports.checkIfAlreadyLoggedIn = checkIfAlreadyLoggedIn;
 exports.getProfile = getProfile;
 exports.submitProfile = submitProfile;

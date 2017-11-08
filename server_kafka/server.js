@@ -9,27 +9,30 @@ var consumer = connection.getConsumer(topic_name);
 var producer = connection.getProducer();
 
 
-
-
-console.log('Hi');
-
 var mongoURL =        "mongodb://localhost:27017/DropBox_application";
 var mongo = require("./services/mongo");
+
 var pool = require("./services/connectionPool");
 
 pool.createConnectionPool(mongoURL , function(data){
-    if(data){
-        console.log("Database Pool Created ") ; 
-    }
+    console.log("DB Pool Created") ;
 }) ;
-  
+
+
+
+
 
 var chunk_requests = {};
 
+ 
+ /*var db  ;
+ mongo.connect( mongoURL , function(database , dbId){
+    db = database ; 
+    console.log("Connection extablished successfully")
+ })
 
 
-
-
+var dbId = 0 ; */
 
 
 console.log('server is running');
@@ -40,10 +43,11 @@ consumer.on('message', function (message) {
     console.log("API " , apiToCall) ; 
     
     if(apiToCall !== 'upload'){
+        
         pool.getConnection( function(db , dbId){
 
             if(apiToCall === 'login'){
-                
+                console.log("Server login") ; 
                    login.handle_request(data.data, db , dbId ,   function(err,res){
                            
                             var payloads = [
@@ -80,8 +84,42 @@ consumer.on('message', function (message) {
                             
                             return;
                     })
+            }else if(apiToCall === 'checkProfileExist'){
+                    users.checkProfileExist(data.data, db , dbId ,  function(err,res){
+                            var payloads = [
+                                { topic: data.replyTo,
+                                    messages:JSON.stringify({
+                                        correlationId:data.correlationId,
+                                        data : res
+                                    }),
+                                    partition : 0
+                                }
+                            ];
+                            producer.send(payloads, function(err, data){
+                                //console.log(data);
+                            });
+                            
+                            return;
+                    })
             }else if(apiToCall === 'getAllGroups'){
                     groups.getAllGroups(data.data, db , dbId ,  function(err,res){
+                            var payloads = [
+                                { topic: data.replyTo,
+                                    messages:JSON.stringify({
+                                        correlationId:data.correlationId,
+                                        data : res
+                                    }),
+                                    partition : 0
+                                }
+                            ];
+                            producer.send(payloads, function(err, data){
+                                //console.log(data);
+                            });
+                            
+                            return;
+                    })
+            }else if(apiToCall === 'getProfile'){
+                    users.getProfile(data.data, db , dbId ,  function(err,res){
                             var payloads = [
                                 { topic: data.replyTo,
                                     messages:JSON.stringify({

@@ -1,9 +1,6 @@
 var upload = require('express-fileupload');
-var fs = require('fs-extra');
-var path = require('path')
-var path = require('path');
-var mime = require('mime');
 
+var path = require('path')
 var bcrypt = require('bcrypt');
 var passport = require('passport');
 var authenticate = require('../middleware/authenticateMiddleware');
@@ -13,34 +10,16 @@ var session = require('express-session');
 
 //mongo connection
 var mongoSessionURL = "mongodb://localhost:27017/DropBox_sessions";
-var mongo = require("../middleware/mongo");
 const MongoStore = require('connect-mongo')(session);
 var ObjectID = require('mongodb').ObjectID
 
 //Kafka
 var kafka = require('../middleware/kafka/client');
 
-var FileReader = require('filereader');
-const splitFile = require('split-file');
-
-//Mongoose 
-var mongoose = require('mongoose');
-let Grid = require('gridfs-stream');
-let conn = mongoose.connection ; 
-Grid.mongo = mongoose.mongo ;
-let gfs ; 
-
-//Buffer 
-var JSONB = require('json-buffer')
-var Buffer2 = require('buffer').Buffer
-
-var CHUNK_SIZE = 100 * 1024;
+var CHUNK_SIZE = 102400;
 
 
-module.exports = function(app , db , connection  ){
-	
-	gfs = Grid(db);
-	
+module.exports = function(app){
 	
 	app.use(session({
 		secret: 'fdghghjhjlfggnhmjmffsfdscdffbvgfgfg',
@@ -54,7 +33,6 @@ module.exports = function(app , db , connection  ){
 	}))
 	app.use(passport.initialize());
 	app.use(passport.session());
-	
 	
 	app.use(upload()) ; 
 	
@@ -269,15 +247,17 @@ module.exports = function(app , db , connection  ){
 	})
 	
 	
-	app.post('/getAllUsers', authenticate ,  function(req, res) {
+	app.post('/getAllUsers'  , authenticate ,  function(req, res) {
 		 var email = req.body.email ;
+		 
+		 
 		 var apiObject = {"api" : "getAllUsers" ,
 				 email : email
 			  } 
 		 
 		 
 		 kafka.make_request('dropbox_app',apiObject , function(err,result){
-			 console.log("All users " , result ) ; 
+			 
 				if(result.allUsers === null){
 					res.status(result.code).json({})
 				}else{
@@ -315,20 +295,17 @@ module.exports = function(app , db , connection  ){
 	app.post('/checkProfileExist',authenticate ,   function(req, res) {
 		 var email = req.body.email ;
 		
-		 var collection = db.collection('profile');
-		 
-		 collection.find({email : email }).toArray(function(err , result){
-			 if(result[0]){
-				 res.status(200).json({user : result[0], profileExist : true})
-			 }else{
-				res.status(200).json({user : result[0] , profileExist : false})
-			 }
-		 })
+		 var apiObject = {"api" : "checkProfileExist" ,
+				 email : email,
+				} 
+		 kafka.make_request('dropbox_app',apiObject , function(err,result){
+				res.status(result.code).json({user : result.user , profileExist : result.profileExist});
+			})
 	})
 	
 	
 	
-	app.post('/getProfile' , authenticate ,  function(req, res) {
+	app.post('/getProfile'  , authenticate ,  function(req, res) {
 		 var email = req.body.email ;
 		
 		 var apiObject = {"api" : "getProfile" ,

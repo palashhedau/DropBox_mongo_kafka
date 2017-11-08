@@ -1,7 +1,7 @@
 var crypto = require('crypto');
 var conn = require('./Connection');
 
-var TIMEOUT=8000; //time to wait for response in ms
+var TIMEOUT=1000000; //time to wait for response in ms
 var self;
 
 exports = module.exports =  KafkaRPC;
@@ -54,13 +54,23 @@ KafkaRPC.prototype.makeRequest = function(topic_name, content, callback){
                 partition:0}
         ];
         console.log('in response1');
-        console.log(self.producer.ready);
+      //  console.log(self.producer.ready);
         self.producer.send(payloads, function(err, data){
             console.log('in response2');
-            if(err)
-                console.log(err);
+            if(err){
+            	var entry = self.requests[correlationId];
+                //make sure we don't timeout by clearing it
+                clearTimeout(entry.timeout);
+                //delete the entry from hash
+                delete self.requests[correlationId];
+                //callback, no err
+                entry.callback(err);
+                
+                //console.log(data) ; 
+            }
+                
             
-            console.log(data);
+           
         });
     });
 };
@@ -113,13 +123,15 @@ KafkaRPC.prototype.makeChunkedRequest = function(topic_name, content, chunks, ca
             ];
             self.producer.send(payloads, function(err, data){
                 if(err) {
-                    var entry = self.requests[correlationId];
-                    //make sure we don't timeout by clearing it
-                    clearTimeout(entry.timeout);
-                    //delete the entry from hash
-                    delete self.requests[correlationId];
-                    //callback, no err
-                    entry.callback(err);
+                	 var entry = self.requests[correlationId];
+                     //make sure we don't timeout by clearing it
+                     clearTimeout(entry.timeout);
+                     //delete the entry from hash
+                     delete self.requests[correlationId];
+                     //callback, no err
+                     entry.callback(err);
+                     
+                     //console.log(data) ; 
                 }
             });
         }

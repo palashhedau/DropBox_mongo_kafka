@@ -4,7 +4,7 @@ var connected = false;
 
 
 exports.connect = function(url, callback){
-    MongoClient.connect(url, function(err, _db){
+    MongoClient.connect(url,{ poolSize : 100  }  ,  function(err, _db){
       if (err) { throw new Error('Could not connect: '+err); }
       db = _db;
       connected = true;

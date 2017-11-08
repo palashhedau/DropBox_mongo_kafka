@@ -6,12 +6,12 @@ var connected = false;
 /**
  * Connects to the MongoDB Database with the provided URL
  */
-exports.connect = function(url, callback){
-    MongoClient.connect(url, function(err, _db){
+exports.connect = function(url,   callback){
+    MongoClient.connect(url, { maxPoolSize : 100 , auto_reconnect: true, } , function(err, _db){
       if (err) { throw new Error('Could not connect: '+err); }
       db = _db;
       connected = true;
-      console.log(connected +" is connected?");
+      
       callback(db);
     });
 };

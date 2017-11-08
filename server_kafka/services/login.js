@@ -5,7 +5,7 @@ var  pool = require("./connectionPool");
 function handle_request(msg, db , dbId ,  callback){
 
     var res = {};
-    
+    console.log("Login called")
     var collection = db.collection('users');
     
     console.log(msg.email) ; 
@@ -14,6 +14,7 @@ function handle_request(msg, db , dbId ,  callback){
                     if(result[0]){
                         console.log('User found ')
                         auth.verify(msg.password, result[0].password, function(err, verified) {
+                                console.log(dbId) ; 
                                if(verified){
                                      console.log('User authenticated') ; 
                                 user =  {user_id : result[0]._id , email : result[0].email , 
@@ -54,16 +55,17 @@ function registration(msg, db , dbId ,  callback){
     var dob = msg.dob ; 
     var gender = msg.gender ; 
     
-
+    console.log("Registration called " , email ) ; 
     var collection = db.collection('users');
         
         collection.find({email : email}).toArray(function(err , result){
+           
             if(err){
                 console.log(err);
                 pool.releaseConnection(db , dbId);
             }else{
                 if(result[0]){
-                    console.log('User already present ' , result[0]); 
+                   
                     pool.releaseConnection(db , dbId);
                     res.code = 200 ; 
                     res.success  = false ; 
@@ -75,10 +77,8 @@ function registration(msg, db , dbId ,  callback){
                     const saltRounds = 10;
                     
                     auth.hash(password, function(err, hashed) {
-                      console.log(hashed.hash); // Hashed password
-                      console.log(hashed.salt); // Salt
-
-                       var obj = {email : email ,
+                     
+                     var obj = {email : email ,
                                 password : hashed ,
                                 fname : fname,
                                 lname : lname  ,
@@ -95,6 +95,7 @@ function registration(msg, db , dbId ,  callback){
                                 callback(null , res) ; 
                                
                             }else{
+                                console.log("User successfully registered ", email , dbId);
                                 res.code = 200 ; 
                                 res.success  = true ; 
                                 res.error = ''

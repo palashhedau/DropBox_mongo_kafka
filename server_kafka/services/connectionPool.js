@@ -4,7 +4,7 @@ var connected = false;
 var sleep = require('system-sleep');
 
 var connectionArray = [] ; 
-const poolsize = 10  ;
+const poolsize = 100  ;
 
 var connId = 0 ; 
 
@@ -16,7 +16,7 @@ exports.createConnectionPool = function(url , callback){
             var connection = {} ; 
 
             if(connectionArray[connId] === undefined){
-               console.log(connId , "New connection establishing") ;
+               //console.log(connId , "New connection establishing") ;
                connection.db = _db ;
                connection.id = connId ; 
                connectionArray.push(connection) 
@@ -24,10 +24,8 @@ exports.createConnectionPool = function(url , callback){
 
              }  
       }) 
-  
-       callback(true) ; 
   }
-
+   callback(true) ; 
 }
 
 exports.getConnection = function( callback){
@@ -41,7 +39,7 @@ exports.getConnection = function( callback){
     }
 
      if(!connectionFOund){
-        console.log("Asking for available connection") ;
+        //console.log("Asking for available connection") ;
         var conn = setUpQueue(callback) ;
         callback(conn.db , conn.id) 
      }
@@ -54,12 +52,12 @@ setUpQueue = function(){
 
   while(connectionFound === false){
     if(connectionArray.length > 0){
-      console.log("Found connection") ;
+     // console.log("Found connection") ;
       conn = connectionArray.pop() ; 
       connectionFound = true ;
     }
 
-    sleep(50);
+    sleep(10);
 
   }
 

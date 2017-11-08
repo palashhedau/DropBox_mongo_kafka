@@ -11,12 +11,11 @@ var mysql = require ('mysql');
 
 
 //mongo connection
-var mongoURL =        "mongodb://localhost:27017/DropBox_application";
+var mongoURL = "mongodb://localhost:27017/DropBox_application";
 var mongo = require("./middleware/mongo");
 
-
-
 var app = express();
+
 
 //Enable CORS
 var corsOptions = {
@@ -25,13 +24,7 @@ var corsOptions = {
 }
 app.use(cors(corsOptions))
 
-
 app.use(morgan('dev')) ; 
-
-
-
-
-
 
 app.set('port', process.env.PORT || 3002);
 app.set('view engine', 'ej');
@@ -41,7 +34,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-var connection = mysql.createPool({
+var mysqlConnection = mysql.createPool({
 	 connectionLimit : 2500 ,  
 	 host : 'localhost',
 	 user : 'root',
@@ -50,14 +43,7 @@ var connection = mysql.createPool({
 });
 
 
-
-mongo.connect(mongoURL, function(db){
-	controller(app , db , connection) ; 
-})
-
-
-
-
+controller(app ) ; 
 
 
 http.createServer(app).listen(app.get('port'), function(){
