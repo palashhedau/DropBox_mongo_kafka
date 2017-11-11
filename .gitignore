@@ -1,3 +1,4 @@
 Client/node_modules/*
 server/node_modules/*
 server_kafka/node_modules/*
+Mocha/node_modules/*

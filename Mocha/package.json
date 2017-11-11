@@ -1,0 +1,16 @@
+{
+  "name": "Mocha",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node app.js",
+    "test": "mocha"
+  },
+  "dependencies": {
+    "chai": "^4.1.2",
+    "chai-http": "^3.0.0",
+    "express": "3.2.6",
+    "jade": "*",
+    "mocha": "^4.0.1"
+  }
+}
