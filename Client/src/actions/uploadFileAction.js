@@ -43,7 +43,6 @@ export function getRecentFiles(email   )  {
 
 	  		}).then(function (response) {
 			      response.json().then(res => {
-			      	console.log("///////////////////////////+++++++++++++++++++ " , res )
 			      	dispatch({type : 'GET_RECENT_FILES_SUCCESS' , payload : res})
 			      })
 			})
@@ -78,15 +77,9 @@ export function getAllFiles(email , foldername , directory )  {
 	   	    body: JSON.stringify({email : email , foldername : foldername , directory : directory })
 
 	  		}).then(function (response) {
-			      
-
-			      response.json().then(res => {
-			      	console.log('res ' , res )
-			      	console.log("---------------------------- " , res)
+			     response.json().then(res => {
 			      	dispatch({type : 'GET_ALL_FILES_SUCCESS' , payload :  res.filelist}) ; 
 			      })
-
-
 			})
 	        .catch(error => {
 	            console.log("This is error");
@@ -122,10 +115,8 @@ export function deleteFile(email , filename , directory  )  {
 			})
 	        .catch(error => {
 	            console.log("This is error");
-	            
 	        })
 		}
-
 }
 
 
